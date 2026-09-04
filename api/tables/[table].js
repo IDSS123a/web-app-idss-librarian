@@ -28,12 +28,19 @@ module.exports = async (req, res) => {
       if (search) {
         const cols = SEARCHABLE_COLUMNS[table] || [];
         if (cols.length) {
-          const orExpr = cols.map(c => `${c}.ilike.%${search.replace(/[%,]/g, '')}%`).join(',');
-          query = query.or(orExpr);
+          // PostgREST's or() filter string uses `,` `(` `)` `.` `*` as syntax
+          // delimiters — strip them from user input so a search term can't
+          // break out of its own condition and splice in another one.
+          const safeSearch = search.replace(/[%,()."*]/g, '');
+          if (safeSearch) {
+            const orExpr = cols.map(c => `${c}.ilike.%${safeSearch}%`).join(',');
+            query = query.or(orExpr);
+          }
         }
       }
 
-      if (sort) {
+      const SORT_RE = /^-?[a-z_][a-z0-9_]*$/i;
+      if (sort && SORT_RE.test(sort)) {
         const desc = sort.startsWith('-');
         const col = desc ? sort.slice(1) : sort;
         query = query.order(col, { ascending: !desc });
