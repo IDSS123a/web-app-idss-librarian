@@ -1,0 +1,421 @@
+[
+  {
+    "name": "staff",
+    "fields": [
+      {
+        "name": "id",
+        "type": "text",
+        "description": "Unique identifier"
+      },
+      {
+        "name": "full_name",
+        "type": "text",
+        "description": "Staff member full name"
+      },
+      {
+        "name": "email",
+        "type": "text",
+        "description": "Staff email (for attribution only, not real auth)"
+      },
+      {
+        "name": "role",
+        "type": "text",
+        "description": "App role",
+        "options": [
+          "admin",
+          "librarian",
+          "viewer"
+        ]
+      },
+      {
+        "name": "active",
+        "type": "bool",
+        "description": "Whether this staff account is active"
+      }
+    ]
+  },
+  {
+    "name": "categories",
+    "fields": [
+      {
+        "name": "id",
+        "type": "text",
+        "description": "Unique identifier"
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "description": "Category name (e.g. Knjiga, Udzbenik...)"
+      },
+      {
+        "name": "active",
+        "type": "bool",
+        "description": "Whether category is available for selection"
+      }
+    ]
+  },
+  {
+    "name": "books",
+    "fields": [
+      {
+        "name": "id",
+        "type": "text",
+        "description": "Unique identifier"
+      },
+      {
+        "name": "isbn",
+        "type": "text",
+        "description": "ISBN-13/EAN-13, if known"
+      },
+      {
+        "name": "title",
+        "type": "text",
+        "description": "Book title"
+      },
+      {
+        "name": "subtitle",
+        "type": "text",
+        "description": "Subtitle"
+      },
+      {
+        "name": "author",
+        "type": "text",
+        "description": "Author(s)"
+      },
+      {
+        "name": "publisher",
+        "type": "text",
+        "description": "Publisher"
+      },
+      {
+        "name": "publication_year",
+        "type": "number",
+        "description": "Publication year"
+      },
+      {
+        "name": "language",
+        "type": "text",
+        "description": "Language"
+      },
+      {
+        "name": "page_count",
+        "type": "number",
+        "description": "Page count"
+      },
+      {
+        "name": "description",
+        "type": "rich_text",
+        "description": "Description/summary"
+      },
+      {
+        "name": "category",
+        "type": "text",
+        "description": "Item type / category"
+      },
+      {
+        "name": "cover_url",
+        "type": "text",
+        "description": "Cover image URL"
+      },
+      {
+        "name": "created_by",
+        "type": "text",
+        "description": "Staff who added this bibliographic record"
+      }
+    ]
+  },
+  {
+    "name": "book_copies",
+    "fields": [
+      {
+        "name": "id",
+        "type": "text",
+        "description": "Unique identifier"
+      },
+      {
+        "name": "book_id",
+        "type": "text",
+        "description": "FK -> books.id"
+      },
+      {
+        "name": "inventory_number",
+        "type": "text",
+        "description": "Unique inventory number, e.g. IDSS-LIB-000001"
+      },
+      {
+        "name": "subject",
+        "type": "text",
+        "description": "School subject (for textbooks/workbooks)"
+      },
+      {
+        "name": "grade",
+        "type": "text",
+        "description": "Grade/class level"
+      },
+      {
+        "name": "shelf_location",
+        "type": "text",
+        "description": "Shelf/location code"
+      },
+      {
+        "name": "condition",
+        "type": "text",
+        "description": "Physical condition",
+        "options": [
+          "novo",
+          "dobro",
+          "osteceno",
+          "lose"
+        ]
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "description": "Current status",
+        "options": [
+          "available",
+          "borrowed",
+          "lost",
+          "damaged"
+        ]
+      },
+      {
+        "name": "notes",
+        "type": "text",
+        "description": "Free-text notes"
+      },
+      {
+        "name": "added_date",
+        "type": "datetime",
+        "description": "Date this copy was added"
+      },
+      {
+        "name": "borrower_name",
+        "type": "text",
+        "description": "Denormalized: current borrower name if borrowed"
+      },
+      {
+        "name": "borrower_student_id",
+        "type": "text",
+        "description": "Denormalized: current borrower student_id if borrowed"
+      },
+      {
+        "name": "borrowed_date",
+        "type": "datetime",
+        "description": "Denormalized: when current loan started"
+      },
+      {
+        "name": "due_date",
+        "type": "datetime",
+        "description": "Denormalized: due date of current loan"
+      },
+      {
+        "name": "current_borrowing_id",
+        "type": "text",
+        "description": "FK -> borrowings.id of the active loan, if any"
+      }
+    ]
+  },
+  {
+    "name": "library_users",
+    "fields": [
+      {
+        "name": "id",
+        "type": "text",
+        "description": "Unique identifier"
+      },
+      {
+        "name": "student_id",
+        "type": "text",
+        "description": "Unique school student ID (dedup key, QR identifier)"
+      },
+      {
+        "name": "first_name",
+        "type": "text",
+        "description": "First name"
+      },
+      {
+        "name": "last_name",
+        "type": "text",
+        "description": "Last name"
+      },
+      {
+        "name": "class_name",
+        "type": "text",
+        "description": "Class/grade, e.g. 7B"
+      },
+      {
+        "name": "email",
+        "type": "text",
+        "description": "Email (optional)"
+      },
+      {
+        "name": "active",
+        "type": "bool",
+        "description": "Whether student is active"
+      }
+    ]
+  },
+  {
+    "name": "borrowings",
+    "fields": [
+      {
+        "name": "id",
+        "type": "text",
+        "description": "Unique identifier"
+      },
+      {
+        "name": "copy_id",
+        "type": "text",
+        "description": "FK -> book_copies.id"
+      },
+      {
+        "name": "book_id",
+        "type": "text",
+        "description": "FK -> books.id (denormalized)"
+      },
+      {
+        "name": "book_title",
+        "type": "text",
+        "description": "Denormalized book title for fast display/export"
+      },
+      {
+        "name": "inventory_number",
+        "type": "text",
+        "description": "Denormalized inventory number"
+      },
+      {
+        "name": "student_record_id",
+        "type": "text",
+        "description": "FK -> library_users.id"
+      },
+      {
+        "name": "student_id",
+        "type": "text",
+        "description": "Denormalized school student ID"
+      },
+      {
+        "name": "student_name",
+        "type": "text",
+        "description": "Denormalized student full name"
+      },
+      {
+        "name": "student_class",
+        "type": "text",
+        "description": "Denormalized class name"
+      },
+      {
+        "name": "borrowed_at",
+        "type": "datetime",
+        "description": "When borrowed"
+      },
+      {
+        "name": "due_date",
+        "type": "datetime",
+        "description": "Due date"
+      },
+      {
+        "name": "returned_at",
+        "type": "datetime",
+        "description": "When returned (empty if still out)"
+      },
+      {
+        "name": "librarian_borrowed",
+        "type": "text",
+        "description": "Staff who processed the borrowing"
+      },
+      {
+        "name": "librarian_returned",
+        "type": "text",
+        "description": "Staff who processed the return"
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "description": "Transaction status",
+        "options": [
+          "borrowed",
+          "returned",
+          "overdue",
+          "lost",
+          "damaged"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "settings",
+    "fields": [
+      {
+        "name": "id",
+        "type": "text",
+        "description": "Unique identifier (single row expected)"
+      },
+      {
+        "name": "school_name",
+        "type": "text",
+        "description": "School name"
+      },
+      {
+        "name": "library_name",
+        "type": "text",
+        "description": "Library name"
+      },
+      {
+        "name": "default_loan_period_days",
+        "type": "number",
+        "description": "Default borrowing period in days"
+      },
+      {
+        "name": "inventory_prefix",
+        "type": "text",
+        "description": "Inventory number prefix, e.g. IDSS-LIB-"
+      },
+      {
+        "name": "next_inventory_seq",
+        "type": "number",
+        "description": "Next inventory sequence number to allocate"
+      }
+    ]
+  },
+  {
+    "name": "audit_log",
+    "fields": [
+      {
+        "name": "id",
+        "type": "text",
+        "description": "Unique identifier"
+      },
+      {
+        "name": "actor",
+        "type": "text",
+        "description": "Staff name/email who performed the action"
+      },
+      {
+        "name": "action",
+        "type": "text",
+        "description": "Action type, e.g. book_created, copy_borrowed, students_bulk_imported"
+      },
+      {
+        "name": "entity",
+        "type": "text",
+        "description": "Entity type affected, e.g. book, copy, student, borrowing"
+      },
+      {
+        "name": "entity_id",
+        "type": "text",
+        "description": "ID of the affected entity"
+      },
+      {
+        "name": "metadata",
+        "type": "rich_text",
+        "description": "JSON string with extra details"
+      },
+      {
+        "name": "occurred_at",
+        "type": "datetime",
+        "description": "When the action occurred"
+      }
+    ]
+  }
+]

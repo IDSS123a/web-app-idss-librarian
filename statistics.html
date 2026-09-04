@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDSS Librarian — Statistika</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div id="shell-topbar-slot"></div>
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <main class="main-content">
+    <div class="page-header">
+      <div><h2>Statistika</h2><p>Detaljan pregled inventara, kruzenja i popularnosti</p></div>
+    </div>
+
+    <div class="stats-grid" id="stat-inventory"></div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <h3 style="margin-top:0;">Kruzenje knjiga</h3>
+        <div style="height:260px;"><canvas id="chart-circulation"></canvas></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;">Status inventara</h3>
+        <div style="height:260px;"><canvas id="chart-inv-status"></canvas></div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <h3 style="margin-top:0;">Zaduzenja po razredu</h3>
+        <div style="height:260px;"><canvas id="chart-by-grade"></canvas></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;">Zaduzenja po mjesecu</h3>
+        <div style="height:260px;"><canvas id="chart-by-month"></canvas></div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <h3 style="margin-top:0;">Najtrazenije knjige (Top 10)</h3>
+        <div id="top-books"></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;">Najaktivniji korisnici (Top 10)</h3>
+        <div id="top-users"></div>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="shell-bottomnav-slot"></div>
+<script src="js/core.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/statistics.js"></script>
+</body>
+</html>

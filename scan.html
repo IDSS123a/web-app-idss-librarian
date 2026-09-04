@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDSS Librarian — Skeniraj</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="shell-topbar-slot"></div>
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h2>Skeniraj</h2>
+        <p>Izaberite sta zelite uraditi</p>
+      </div>
+    </div>
+
+    <div class="grid gap-16 grid-3col">
+      <a href="library.html?action=add" class="btn-action">
+        <div class="aicon" style="background: linear-gradient(135deg, var(--idss-red), #c81f24);"><i class="fa-solid fa-plus"></i></div>
+        <span class="label">Dodaj novu knjigu</span>
+        <small>Skeniraj ISBN barkod</small>
+      </a>
+      <a href="borrowing.html" class="btn-action">
+        <div class="aicon" style="background: linear-gradient(135deg, var(--idss-blue), var(--idss-blue-light));"><i class="fa-solid fa-right-from-bracket"></i></div>
+        <span class="label">Zaduzi knjigu</span>
+        <small>Skeniraj knjigu → skeniraj ucenika</small>
+      </a>
+      <a href="returns.html" class="btn-action">
+        <div class="aicon" style="background: linear-gradient(135deg, #17803d, #22c55e);"><i class="fa-solid fa-right-to-bracket"></i></div>
+        <span class="label">Vrati knjigu</span>
+        <small>Skeniraj knjigu za povrat</small>
+      </a>
+    </div>
+
+    <div class="card mt-24">
+      <h3 style="margin-top:0;"><i class="fa-solid fa-circle-info text-muted"></i> Savjet</h3>
+      <p class="text-secondary">Skener koristi kameru uredjaja za citanje ISBN barkoda (EAN-13) na knjigama i QR/barkoda na dosjeima ucenika.
+      Ako kamera nije dostupna ili skeniranje ne uspije, uvijek mozete unijeti kod rucno.</p>
+    </div>
+  </main>
+</div>
+<div id="shell-bottomnav-slot"></div>
+
+<script src="js/core.js"></script>
+<script src="js/shell.js"></script>
+<script>renderShell('scan');</script>
+</body>
+</html>

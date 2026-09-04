@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDSS Librarian — Izvjestaji</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div id="shell-topbar-slot"></div>
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <main class="main-content">
+    <div class="page-header">
+      <div><h2>Izvjestaji</h2><p>Izvoz podataka u Excel (.xlsx)</p></div>
+    </div>
+
+    <div class="grid gap-16 grid-3col" id="reports-grid"></div>
+  </main>
+</div>
+<div id="shell-bottomnav-slot"></div>
+<script src="js/core.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/reports.js"></script>
+</body>
+</html>

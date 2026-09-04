@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDSS Librarian — Povrati</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+<div id="shell-topbar-slot"></div>
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h2>Povrati</h2>
+        <p>Skenirajte knjigu da biste je razduzili</p>
+      </div>
+      <button class="btn btn-primary btn-lg" onclick="scanBookForReturn()"><i class="fa-solid fa-right-to-bracket"></i> Vrati knjigu</button>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label>Ili pretrazi po naslovu / inventarnom broju / uceniku</label>
+        <input class="input" id="return-search" placeholder="Pretrazi trenutno zaduzene knjige...">
+      </div>
+      <div id="return-search-results"></div>
+    </div>
+
+    <div class="card mt-24">
+      <h3 style="margin-top:0;">Trenutno zaduzene knjige</h3>
+      <div id="active-borrowings-list"><div class="skeleton" style="height:60px;"></div></div>
+    </div>
+  </main>
+</div>
+<div id="shell-bottomnav-slot"></div>
+
+<!-- ============== RETURN CONFIRM MODAL ============== -->
+<div id="return-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <h3>Potvrdi povrat</h3>
+    <div class="card-flat mt-8" id="return-summary"></div>
+    <div id="return-overdue-banner" class="hidden" style="margin-top:14px; padding:12px 14px; border-radius:12px; background:#fde0e1; color:#E8262C; font-weight:700; font-size:13.5px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-neutral" onclick="closeReturnModal()">Otkazi</button>
+      <button class="btn btn-primary btn-lg" onclick="confirmReturn()"><i class="fa-solid fa-check"></i> Potvrdi povrat</button>
+    </div>
+  </div>
+</div>
+
+<div id="return-success-modal" class="modal-backdrop hidden">
+  <div class="modal-box text-center">
+    <div style="font-size:60px; color:#17803d;"><i class="fa-solid fa-circle-check"></i></div>
+    <h3 style="margin: 14px 0 4px;">KNJIGA VRACENA ✓</h3>
+    <p class="sub" id="return-success-detail"></p>
+    <div class="modal-actions" style="justify-content:center;">
+      <button class="btn btn-primary" onclick="closeReturnSuccessModal()">Zavrsi</button>
+      <button class="btn btn-neutral" onclick="closeReturnSuccessModal(); scanBookForReturn();">Vrati jos jednu</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/core.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/scanner.js"></script>
+<script src="js/returns.js"></script>
+</body>
+</html>

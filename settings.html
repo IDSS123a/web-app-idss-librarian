@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDSS Librarian — Podesavanja</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="shell-topbar-slot"></div>
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <main class="main-content">
+    <div class="page-header"><div><h2>Podesavanja</h2><p>Opca podesavanja biblioteke (samo administrator)</p></div></div>
+
+    <div class="card" style="max-width:640px;">
+      <h3 style="margin-top:0;">Opce</h3>
+      <div class="field"><label>Naziv skole</label><input class="input" id="set-school-name"></div>
+      <div class="field"><label>Naziv biblioteke</label><input class="input" id="set-library-name"></div>
+      <div class="field"><label>Zadani period zaduzenja (dana)</label><input class="input" type="number" id="set-loan-period"></div>
+      <div class="field"><label>Prefiks inventarnog broja</label><input class="input" id="set-inv-prefix"></div>
+      <div class="field"><label>Sljedeci inventarni broj</label><input class="input" type="number" id="set-next-seq"></div>
+      <button class="btn btn-primary" onclick="saveSettings()"><i class="fa-solid fa-check"></i> Sacuvaj podesavanja</button>
+    </div>
+
+    <div class="card mt-24" style="max-width:640px;">
+      <div class="flex items-center justify-between">
+        <h3 style="margin:0;">Kategorije</h3>
+        <button class="btn btn-sm btn-primary" onclick="addCategoryPrompt()"><i class="fa-solid fa-plus"></i> Nova</button>
+      </div>
+      <div id="categories-list" class="mt-16"></div>
+    </div>
+
+    <div class="card mt-24" style="max-width:640px;">
+      <h3 style="margin-top:0;">Nalozi osoblja</h3>
+      <div id="staff-list-admin"></div>
+    </div>
+
+    <div class="card mt-24">
+      <h3 style="margin-top:0;">Dnevnik aktivnosti (Audit log)</h3>
+      <p class="text-secondary text-sm">Posljednjih 50 zabiljezenih akcija u sistemu.</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Vrijeme</th><th>Korisnik</th><th>Akcija</th><th>Entitet</th><th>Detalji</th></tr></thead>
+          <tbody id="audit-log-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="shell-bottomnav-slot"></div>
+<script src="js/core.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/settings.js"></script>
+</body>
+</html>

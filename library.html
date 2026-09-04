@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDSS Librarian — Biblioteka</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div id="shell-topbar-slot"></div>
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h2>Biblioteka</h2>
+        <p id="inv-count-sub">Ucitavanje inventara...</p>
+      </div>
+      <div class="flex gap-8">
+        <button class="btn btn-neutral" id="export-btn"><i class="fa-solid fa-file-export"></i> Izvoz u Excel</button>
+        <button class="btn btn-primary" id="add-book-btn"><i class="fa-solid fa-plus"></i> Dodaj knjigu</button>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <div class="search-input-wrap" style="flex:1; min-width:220px;">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input class="input" id="search-input" placeholder="Pretrazi naslov, autora, ISBN, inventarni broj...">
+      </div>
+      <select class="input" id="filter-category" style="width:auto;"><option value="">Sve kategorije</option></select>
+      <select class="input" id="filter-status" style="width:auto;">
+        <option value="">Svi statusi</option>
+        <option value="available">Dostupno</option>
+        <option value="borrowed">Zaduzeno</option>
+        <option value="lost">Izgubljeno</option>
+        <option value="damaged">Osteceno</option>
+      </select>
+    </div>
+
+    <div class="card" style="padding:0;">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Inv. broj</th><th>Naslov</th><th>Autor</th><th>Kategorija</th>
+              <th>ISBN</th><th>Polica</th><th>Status</th><th>Zaduzio</th><th>Rok</th>
+            </tr>
+          </thead>
+          <tbody id="library-tbody">
+            <tr><td colspan="9"><div class="skeleton" style="height:20px;"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="library-empty" class="hidden"></div>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </main>
+</div>
+<div id="shell-bottomnav-slot"></div>
+
+<!-- ============== ADD BOOK MODAL (multi-step) ============== -->
+<div id="add-book-modal" class="modal-backdrop hidden">
+  <div class="modal-box wide">
+    <div id="add-book-step-entry">
+      <h3>Dodaj knjigu</h3>
+      <p class="sub">Skenirajte ISBN barkod ili unesite podatke rucno.</p>
+      <div class="grid gap-16 grid-3col">
+        <button class="btn-action" onclick="startScanIsbn()">
+          <div class="aicon" style="background: linear-gradient(135deg,var(--idss-blue),var(--idss-blue-light));"><i class="fa-solid fa-barcode"></i></div>
+          <span class="label">Skeniraj ISBN</span>
+        </button>
+        <button class="btn-action" onclick="startScanCover()">
+          <div class="aicon" style="background: linear-gradient(135deg,var(--idss-yellow),#ffb703); color:#2b2205;"><i class="fa-solid fa-camera"></i></div>
+          <span class="label">Skeniraj naslovnicu</span>
+        </button>
+        <button class="btn-action" onclick="startManualEntry()">
+          <div class="aicon" style="background: linear-gradient(135deg,#5b6b7a,#8494a3);"><i class="fa-solid fa-pen"></i></div>
+          <span class="label">Nema ISBN? Unesi rucno</span>
+        </button>
+      </div>
+      <div class="modal-actions"><button class="btn btn-neutral" onclick="closeAddBookModal()">Zatvori</button></div>
+    </div>
+
+    <div id="add-book-step-searching" class="hidden text-center" style="padding:30px 0;">
+      <div class="spinner" style="margin: 0 auto 16px;"></div>
+      <p id="searching-msg" class="font-bold">Trazim informacije o knjizi...</p>
+    </div>
+
+    <div id="add-book-step-cover" class="hidden">
+      <h3>Skeniraj naslovnicu</h3>
+      <p class="sub">Fotografisite naslovnicu knjige — pokusacemo prepoznati naslov i autora.</p>
+      <input type="file" accept="image/*" capture="environment" id="cover-file-input" class="input" style="margin-bottom:14px;">
+      <div id="cover-preview"></div>
+      <div class="modal-actions">
+        <button class="btn btn-neutral" onclick="backToEntry()">Nazad</button>
+        <button class="btn btn-primary" onclick="runCoverOcr()">Prepoznaj</button>
+      </div>
+    </div>
+
+    <div id="add-book-step-confirm-found" class="hidden">
+      <h3>Da li je ovo tacna knjiga?</h3>
+      <div class="flex gap-16 mt-16" style="align-items:flex-start;">
+        <img id="confirm-cover-img" src="" style="width:100px; border-radius:10px; box-shadow: var(--shadow-out-sm); display:none;">
+        <div style="flex:1;">
+          <div id="confirm-book-title" class="font-bold" style="font-size:18px;"></div>
+          <div id="confirm-book-meta" class="text-secondary text-sm mt-8"></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-neutral" onclick="startManualEntry()">Unesi rucno</button>
+        <button class="btn btn-neutral" onclick="backToEntry()">Trazi ponovo</button>
+        <button class="btn btn-primary" onclick="proceedToDetails()">Da, tacno</button>
+      </div>
+    </div>
+
+    <div id="add-book-step-duplicate" class="hidden">
+      <h3>Knjiga vec postoji u biblioteci</h3>
+      <p class="sub" id="duplicate-info"></p>
+      <div class="modal-actions">
+        <button class="btn btn-neutral" onclick="viewExistingBook()">Pogledaj knjigu</button>
+        <button class="btn btn-primary" onclick="proceedToDetails(true)">Dodaj jos jedan primjerak</button>
+      </div>
+    </div>
+
+    <div id="add-book-step-details" class="hidden">
+      <h3>Detalji primjerka</h3>
+      <p class="sub" id="details-book-summary"></p>
+      <div class="form-grid" id="manual-fields-wrap">
+        <!-- manual entry fields injected here when needed -->
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Kategorija</label>
+          <select class="input" id="copy-category"></select>
+        </div>
+        <div class="field">
+          <label>Skolski predmet (opciono)</label>
+          <input class="input" id="copy-subject" placeholder="npr. Njemacki jezik">
+        </div>
+        <div class="field">
+          <label>Razred (opciono)</label>
+          <input class="input" id="copy-grade" placeholder="npr. 7">
+        </div>
+        <div class="field">
+          <label>Polica/Lokacija</label>
+          <input class="input" id="copy-shelf" placeholder="npr. A3-12">
+        </div>
+        <div class="field">
+          <label>Kolicina (broj primjeraka)</label>
+          <input class="input" type="number" id="copy-quantity" value="1" min="1">
+        </div>
+        <div class="field">
+          <label>Stanje</label>
+          <select class="input" id="copy-condition">
+            <option value="novo">Novo</option>
+            <option value="dobro" selected>Dobro</option>
+            <option value="osteceno">Osteceno</option>
+            <option value="lose">Lose</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Napomena (opciono)</label>
+        <input class="input" id="copy-notes">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-neutral" onclick="backToEntry()">Otkazi</button>
+        <button class="btn btn-primary" id="save-book-btn" onclick="saveBookAndCopies()"><i class="fa-solid fa-check"></i> Dodaj u biblioteku</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== BOOK DETAIL MODAL ============== -->
+<div id="book-detail-modal" class="modal-backdrop hidden">
+  <div class="modal-box wide" id="book-detail-content"></div>
+</div>
+
+<script src="js/core.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/scanner.js"></script>
+<script src="js/metadata.js"></script>
+<script src="js/library.js"></script>
+</body>
+</html>

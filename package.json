@@ -1,0 +1,9 @@
+{
+  "name": "web-app-idss-librarian",
+  "version": "1.0.0",
+  "private": true,
+  "description": "IDSS Librarian - barcode-driven library management for P.U. Internationale Deutsche Schule Sarajevo",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}

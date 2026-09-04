@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDSS Librarian — Kontrolna tabla</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div id="shell-topbar-slot"></div>
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h2 id="greeting">Dobar dan!</h2>
+        <p>Pregled stanja biblioteke IDSS</p>
+      </div>
+      <div class="flex gap-8">
+        <button class="btn btn-primary" onclick="window.location.href='scan.html'"><i class="fa-solid fa-barcode"></i> Skeniraj</button>
+      </div>
+    </div>
+
+    <!-- Quick actions -->
+    <div class="grid gap-16 quick-actions-grid" id="quick-actions">
+      <a href="scan.html" class="btn-action">
+        <div class="aicon" style="background: linear-gradient(135deg, var(--idss-yellow), #ffb703); color:#2b2205;"><i class="fa-solid fa-barcode"></i></div>
+        <span class="label">Skeniraj knjigu</span>
+        <small>Dodaj / pretrazi</small>
+      </a>
+      <a href="borrowing.html" class="btn-action">
+        <div class="aicon" style="background: linear-gradient(135deg, var(--idss-blue), var(--idss-blue-light));"><i class="fa-solid fa-right-from-bracket"></i></div>
+        <span class="label">Zaduzi</span>
+        <small>Skeniraj knjigu + ucenika</small>
+      </a>
+      <a href="returns.html" class="btn-action">
+        <div class="aicon" style="background: linear-gradient(135deg, #17803d, #22c55e);"><i class="fa-solid fa-right-to-bracket"></i></div>
+        <span class="label">Razduzi</span>
+        <small>Skeniraj knjigu</small>
+      </a>
+      <a href="library.html?action=add" class="btn-action">
+        <div class="aicon" style="background: linear-gradient(135deg, var(--idss-red), #c81f24);"><i class="fa-solid fa-plus"></i></div>
+        <span class="label">Dodaj knjigu</span>
+        <small>Skeniraj ISBN</small>
+      </a>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="stats-grid" id="stats-grid">
+      ${''}
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <div class="card">
+        <h3 style="margin-top:0;">Zaduzenja po danu (posljednjih 14 dana)</h3>
+        <div style="height:280px;"><canvas id="chart-activity"></canvas></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;">Stavke po kategoriji</h3>
+        <div style="height:280px;"><canvas id="chart-category"></canvas></div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <h3 style="margin-top:0;">Najtrazenije knjige (Top 10)</h3>
+        <div id="top-books-list"></div>
+      </div>
+      <div class="card">
+        <div class="flex items-center justify-between">
+          <h3 style="margin:0;">Trenutno u kasnjenju</h3>
+          <a href="borrowing.html?filter=overdue" class="btn btn-sm btn-neutral">Sve</a>
+        </div>
+        <div id="overdue-list" class="mt-16"></div>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="shell-bottomnav-slot"></div>
+
+<script src="js/core.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>
