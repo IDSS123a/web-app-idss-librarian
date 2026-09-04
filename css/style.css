@@ -83,7 +83,7 @@ img { max-width: 100%; }
   padding: 8px 10px 20px;
 }
 .sidebar-brand .logo-mark {
-  width: 40px; height: 40px;
+  width: 100px; height: 42px;
   border-radius: 12px;
   background: linear-gradient(135deg, var(--idss-blue), var(--idss-blue-light));
   display: flex; align-items: center; justify-content: center;

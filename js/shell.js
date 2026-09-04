@@ -30,7 +30,7 @@ function renderShell(activeKey) {
   const sidebarHtml = `
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <div class="logo-mark"><img src="img/idss-logo.png" alt="IDSS" style="width:100%;height:100%;object-fit:contain;padding:5px;"></div>
+        <div class="logo-mark"><img src="img/idss-logo.png" alt="IDSS" style="width:100%;height:100%;object-fit:contain;padding:4px;"></div>
         <div class="brand-text">
           <h1>IDSS Librarian</h1>
           <p>Library Management System</p>
@@ -57,7 +57,7 @@ function renderShell(activeKey) {
   const topbarHtml = `
     <header class="topbar-mobile">
       <div class="flex items-center gap-8">
-        <div class="logo-mark" style="width:32px;height:32px;font-size:13px;"><img src="img/idss-logo.png" alt="IDSS" style="width:100%;height:100%;object-fit:contain;padding:4px;"></div>
+        <div class="logo-mark" style="width:88px;height:32px;font-size:13px;"><img src="img/idss-logo.png" alt="IDSS" style="width:100%;height:100%;object-fit:contain;padding:3px;"></div>
         <strong>IDSS Librarian</strong>
       </div>
       <div class="flex items-center gap-8">
