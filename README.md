@@ -135,3 +135,4 @@ repo did once the app left that platform.
 **Still open, unchanged from §5**: the access-control decision (§5.1) and
 the move to real auth (§5.4) are still yours to make, not something this
 pass invented an answer for.
+
