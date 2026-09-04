@@ -1,14 +1,21 @@
 /* ============================================================
    IDSS Librarian — ISBN metadata lookup
    Fallback chain: Google Books API -> DNB (Deutsche Nationalbibliothek)
-   -> Open Library API -> manual.
+   -> BnF (Bibliotheque nationale de France) -> Open Library -> manual.
    All free, no-auth, CORS-enabled public services.
 
-   DNB was added after a real miss: the anonymous (no API key) Google
-   Books endpoint shares a small global quota that is often already
-   exhausted, and Open Library's German-language coverage is thin. As
-   a German-curriculum school, most scanned ISBNs are German titles —
-   DNB is the authoritative, unlimited, free source for exactly those.
+   IDSS shelves are predominantly German (Cornelsen, Klett, Schul Expert),
+   French, and English textbooks, plus Bosnian/regional publishers (NAM,
+   Svjetlost Komerc, Bosanska knjiga...). Coverage per source:
+     - Google Books: broad, but the anonymous (no API key) endpoint shares
+       a small global quota that is frequently already exhausted.
+     - DNB: authoritative + unlimited for German ISBNs.
+     - BnF: authoritative + unlimited for French ISBNs.
+     - Open Library: broad general fallback, thin on all of the above.
+     - Bosnian/regional publishers: no free public metadata API exists —
+       BiH's library union catalog (COBISS) requires an institutional
+       agreement, not a public endpoint. Manual entry / cover-photo OCR
+       is the honest fallback for those until/unless that changes.
    ============================================================ */
 
 function cleanIsbn(raw) {
@@ -52,7 +59,13 @@ async function lookupIsbn(rawIsbn) {
     if (dnbBook) return { found: true, source: 'dnb', isbn, book: dnbBook };
   } catch (e) { console.warn('DNB lookup failed:', e); }
 
-  // 3. Open Library fallback
+  // 3. BnF (Bibliotheque nationale de France) — best coverage for French ISBNs
+  try {
+    const bnfBook = await lookupBnf(isbn);
+    if (bnfBook) return { found: true, source: 'bnf', isbn, book: bnfBook };
+  } catch (e) { console.warn('BnF lookup failed:', e); }
+
+  // 4. Open Library fallback
   try {
     const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
     if (res.ok) {
@@ -80,7 +93,7 @@ async function lookupIsbn(rawIsbn) {
     }
   } catch (e) { console.warn('Open Library lookup failed:', e); }
 
-  // 4. Not found anywhere -> manual entry
+  // 5. Not found anywhere -> manual entry
   return { found: false, source: null, isbn, book: null };
 }
 
@@ -90,56 +103,93 @@ function extractYear(dateStr) {
   return m ? parseInt(m[0], 10) : null;
 }
 
-// ---------- DNB (Deutsche Nationalbibliothek) SRU lookup ----------
-const DNB_LANG_MAP = {
+// ---------- Shared helpers for SRU/Dublin-Core based lookups (DNB, BnF) ----------
+const SRU_LANG_MAP = {
   ger: 'DE', deu: 'DE', eng: 'EN', fre: 'FR', fra: 'FR', ita: 'IT',
   spa: 'ES', bos: 'BS', hrv: 'HR', srp: 'SR', tur: 'TR'
 };
 
-function dnbText(xmlDoc, tagName) {
+function sruText(xmlDoc, tagName) {
   const el = xmlDoc.getElementsByTagName(tagName)[0];
   return el ? (el.textContent || '').trim() : '';
 }
 
-function dnbAllText(xmlDoc, tagName) {
+function sruAllText(xmlDoc, tagName) {
   return Array.from(xmlDoc.getElementsByTagName(tagName)).map(el => (el.textContent || '').trim()).filter(Boolean);
 }
 
-// "Nachname, Vorname [Verfasser]" -> "Vorname Nachname"
-function dnbFormatName(raw) {
-  const cleaned = raw.replace(/\s*\[[^\]]*\]\s*$/, '').trim();
+// Handles both "Nachname, Vorname [Verfasser]" (DNB) and
+// "Nachname, Vorname (1900-1944). Auteur du texte" (BnF) -> "Vorname Nachname"
+function formatCreatorName(raw) {
+  let cleaned = raw.split('. ')[0]; // drop a trailing ". Role du texte" (BnF)
+  cleaned = cleaned.replace(/\s*\[[^\]]*\]\s*$/, ''); // drop a trailing "[Role]" (DNB)
+  cleaned = cleaned.replace(/\s*\([^)]*\)\s*$/, '').trim(); // drop trailing "(dates)"
   const parts = cleaned.split(',').map(p => p.trim()).filter(Boolean);
   return parts.length === 2 ? `${parts[1]} ${parts[0]}` : cleaned;
 }
 
-async function lookupDnb(isbn) {
-  const url = `https://services.dnb.de/sru/dnb?version=1.1&operation=searchRetrieve&query=num%3D${isbn}&recordSchema=oai_dc&maximumRecords=1`;
+// Handles both "Ort : Verlag" (DNB) and "Verlag (Ort)" (BnF)
+function extractPublisher(raw) {
+  if (raw.includes(':')) return raw.split(':').slice(1).join(':').trim();
+  const withoutPlace = raw.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  return withoutPlace || raw;
+}
+
+function extractPageCount(formatStr) {
+  const m = formatStr.match(/(\d+)\s*(?:S\.?|Seiten|p\.?|pages?)\b/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+async function fetchSruDcRecord(url) {
   const res = await fetch(url);
   if (!res.ok) return null;
   const xmlText = await res.text();
   const xml = new DOMParser().parseFromString(xmlText, 'text/xml');
   if (xml.getElementsByTagName('parsererror').length) return null;
-  const numberOfRecords = parseInt(dnbText(xml, 'numberOfRecords') || '0', 10);
+  const numberOfRecords = parseInt(sruText(xml, 'numberOfRecords') || '0', 10);
   if (!numberOfRecords) return null;
-
-  const title = dnbText(xml, 'dc:title');
+  const title = sruText(xml, 'dc:title');
   if (!title) return null;
+  return xml;
+}
 
-  const authors = dnbAllText(xml, 'dc:creator').map(dnbFormatName);
-  const publisherRaw = dnbText(xml, 'dc:publisher'); // "Ort : Verlag"
-  const publisher = publisherRaw.includes(':') ? publisherRaw.split(':').slice(1).join(':').trim() : publisherRaw;
-  const langRaw = dnbText(xml, 'dc:language').toLowerCase();
-  const formatRaw = dnbText(xml, 'dc:format'); // e.g. "62 Seiten"
-  const pageMatch = formatRaw.match(/(\d+)\s*S(eiten)?\b/i);
+async function lookupDnb(isbn) {
+  const url = `https://services.dnb.de/sru/dnb?version=1.1&operation=searchRetrieve&query=num%3D${isbn}&recordSchema=oai_dc&maximumRecords=1`;
+  const xml = await fetchSruDcRecord(url);
+  if (!xml) return null;
+
+  const publisherRaw = sruText(xml, 'dc:publisher'); // "Ort : Verlag"
+  const langRaw = sruText(xml, 'dc:language').toLowerCase();
 
   return {
-    title,
+    title: sruText(xml, 'dc:title'),
     subtitle: '',
-    author: authors.join(', '),
-    publisher,
-    publication_year: extractYear(dnbText(xml, 'dc:date')),
-    language: DNB_LANG_MAP[langRaw] || (langRaw ? langRaw.toUpperCase() : ''),
-    page_count: pageMatch ? parseInt(pageMatch[1], 10) : null,
+    author: sruAllText(xml, 'dc:creator').map(formatCreatorName).join(', '),
+    publisher: extractPublisher(publisherRaw),
+    publication_year: extractYear(sruText(xml, 'dc:date')),
+    language: SRU_LANG_MAP[langRaw] || (langRaw ? langRaw.toUpperCase() : ''),
+    page_count: extractPageCount(sruText(xml, 'dc:format')),
+    description: '',
+    cover_url: ''
+  };
+}
+
+async function lookupBnf(isbn) {
+  const url = `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=bib.isbn%20all%20%22${isbn}%22&recordSchema=dublincore&maximumRecords=1`;
+  const xml = await fetchSruDcRecord(url);
+  if (!xml) return null;
+
+  const publisherRaw = sruText(xml, 'dc:publisher'); // "Verlag (Ort)"
+  const langRaw = sruText(xml, 'dc:language').toLowerCase();
+
+  return {
+    title: sruText(xml, 'dc:title'),
+    subtitle: '',
+    author: sruAllText(xml, 'dc:creator').map(formatCreatorName).join(', '),
+    publisher: extractPublisher(publisherRaw),
+    publication_year: extractYear(sruText(xml, 'dc:date')),
+    language: SRU_LANG_MAP[langRaw] || (langRaw ? langRaw.toUpperCase() : ''),
+    page_count: extractPageCount(sruText(xml, 'dc:format')),
     description: '',
     cover_url: ''
   };
