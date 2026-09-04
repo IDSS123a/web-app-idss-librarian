@@ -4,6 +4,12 @@
    ============================================================ */
 
 :root {
+  /* Tells the browser which palette to draw its own native widgets in
+     (select dropdown popups, scrollbars, checkboxes) — without this,
+     <select> popups render with the OS default (often light) regardless
+     of our CSS, showing black-on-white text inside an otherwise dark UI. */
+  color-scheme: light;
+
   --idss-blue: #035EA1;
   --idss-blue-light: #08ABE6;
   --idss-yellow: #FFCB29;
@@ -31,6 +37,7 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
   --bg: #171b21;
   --bg-elevated: #1f242c;
   --surface: #1c2128;
@@ -279,6 +286,13 @@ img { max-width: 100%; }
   outline: none;
 }
 .input:focus { border-color: var(--idss-blue-light); }
+select.input {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%2390a0ae' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
 
 .search-input-wrap { position: relative; }
