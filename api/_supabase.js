@@ -38,4 +38,18 @@ const SEARCHABLE_COLUMNS = {
 
 const KNOWN_TABLES = Object.keys(SEARCHABLE_COLUMNS);
 
-module.exports = { getClient, SEARCHABLE_COLUMNS, KNOWN_TABLES };
+// The frontend was written against the original Table API, which silently
+// accepted '' for date/number columns (e.g. `returned_at: ''` on an active
+// borrowing). Postgres rejects '' for timestamptz/numeric columns outright
+// ("invalid input syntax"), so every insert/update normalizes '' -> null
+// first. Safe for text columns too: the frontend already treats '' and null
+// identically (IDSS.fmtDate, `|| ''` fallbacks, etc. all treat both as empty).
+function nullifyEmptyStrings(body) {
+  const out = {};
+  for (const [k, v] of Object.entries(body || {})) {
+    out[k] = v === '' ? null : v;
+  }
+  return out;
+}
+
+module.exports = { getClient, SEARCHABLE_COLUMNS, KNOWN_TABLES, nullifyEmptyStrings };

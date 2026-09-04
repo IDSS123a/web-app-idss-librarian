@@ -4,7 +4,7 @@
 // This implements the exact Table API contract the static frontend already
 // calls via relative `tables/...` fetches (see js/core.js) — vercel.json
 // rewrites `tables/*` to `/api/tables/*` so no frontend file needed to change.
-const { getClient, SEARCHABLE_COLUMNS, KNOWN_TABLES } = require('../_supabase');
+const { getClient, SEARCHABLE_COLUMNS, KNOWN_TABLES, nullifyEmptyStrings } = require('../_supabase');
 
 module.exports = async (req, res) => {
   const { table } = req.query;
@@ -60,7 +60,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      const body = req.body || {};
+      const body = nullifyEmptyStrings(req.body || {});
       const { data, error } = await supabase.from(table).insert(body).select().single();
       if (error) throw error;
       res.status(201).json(data);

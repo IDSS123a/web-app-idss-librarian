@@ -1,7 +1,7 @@
 // GET    /api/tables/:table/:id -> record
 // PATCH  /api/tables/:table/:id -> updated record
 // DELETE /api/tables/:table/:id -> 204
-const { getClient, KNOWN_TABLES } = require('../../_supabase');
+const { getClient, KNOWN_TABLES, nullifyEmptyStrings } = require('../../_supabase');
 
 module.exports = async (req, res) => {
   const { table, id } = req.query;
@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'PATCH') {
-      const body = req.body || {};
+      const body = nullifyEmptyStrings(req.body || {});
       delete body.id; // never let the client repoint the primary key
       const { data, error } = await supabase.from(table).update(body).eq('id', id).select().maybeSingle();
       if (error) throw error;
