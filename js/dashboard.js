@@ -4,7 +4,7 @@
    ============================================================ */
 
 (async function () {
-  renderShell('dashboard');
+  await renderShell('dashboard');
   const session = IDSS.getSession();
   document.getElementById('greeting').textContent = greetingFor(session.full_name);
 

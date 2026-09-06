@@ -10,7 +10,7 @@ let ALL_STUDENTS_B = [];
 let SETTINGS_B = null;
 
 (async function init() {
-  renderShell('borrowing');
+  await renderShell('borrowing');
   await loadData();
   document.getElementById('b-search').addEventListener('input', debounceB(renderBorrowingTable, 250));
   document.getElementById('b-filter-status').addEventListener('change', renderBorrowingTable);

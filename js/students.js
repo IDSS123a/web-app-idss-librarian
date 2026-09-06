@@ -6,7 +6,7 @@ let ALL_STUDENTS = [];
 let ALL_BORROWINGS_S = [];
 
 (async function init() {
-  renderShell('students');
+  await renderShell('students');
   // Import is admin-only by default per spec 19a
   if (!IDSS.hasRole('admin')) {
     document.getElementById('import-btn').style.display = 'none';

@@ -8,7 +8,7 @@ let ALL_COPIES_R = [];
 let RETURN_STATE = {};
 
 (async function init() {
-  renderShell('returns');
+  await renderShell('returns');
   await loadActiveBorrowings();
   document.getElementById('return-search').addEventListener('input', debounceR(searchActiveForReturn, 200));
 

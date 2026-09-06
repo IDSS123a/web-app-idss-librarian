@@ -2,7 +2,7 @@
    IDSS Librarian — Reports / Excel export hub
    ============================================================ */
 
-renderShell('reports');
+(async function () { await renderShell('reports'); })();
 
 const REPORTS = [
   { key: 'physical_layout', label: 'Fizicki raspored', icon: 'fa-list-ol', desc: 'Redoslijed za slaganje na police: kategorija -> predmet -> razred -> naslov' },

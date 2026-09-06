@@ -132,8 +132,10 @@ function buildStaffImportPreview(rawRows) {
 
   const preview = rawRows.map(r => {
     const fullName = (r.full_name || '').trim();
+    const email = (r.email || '').trim();
     const errors = [];
     if (!fullName) errors.push('Nedostaje ime i prezime');
+    if (!email) errors.push('Nedostaje email (obavezan -- koristi se za prijavu)');
 
     const roleRaw = IDSS.normalize(r.role || '');
     const role = STAFF_ROLE_MAP[roleRaw] || (roleRaw ? '' : 'librarian');

@@ -6,7 +6,7 @@ let CURRENT_SETTINGS = null;
 let CURRENT_CATEGORIES = [];
 
 (async function init() {
-  renderShell('settings');
+  await renderShell('settings');
   if (!guardRole('admin')) return;
   await loadSettings();
   await loadCategoriesAdmin();
@@ -120,8 +120,12 @@ function renderStaffListAdmin() {
     const teacherInfo = s.role === 'teacher' ? staffAssignmentsText(s.id) : '';
     return `
     <div class="flex items-center justify-between" style="padding:8px 0; border-bottom:1px solid var(--border-soft);">
-      <div><strong>${escSA(s.full_name)}</strong> <span class="text-muted text-sm">(${STAFF_ROLE_LABELS[s.role] || s.role})</span>${teacherInfo ? `<div class="text-muted text-sm">${escSA(teacherInfo)}</div>` : ''}</div>
+      <div><strong>${escSA(s.full_name)}</strong> <span class="text-muted text-sm">(${STAFF_ROLE_LABELS[s.role] || s.role})</span>
+        <div class="text-muted text-sm">${escSA(s.email || '(nema emaila — ne moze se prijaviti)')}</div>
+        ${teacherInfo ? `<div class="text-muted text-sm">${escSA(teacherInfo)}</div>` : ''}
+      </div>
       <div class="flex items-center gap-8">
+        <span class="badge ${s.auth_user_id ? 'badge-available' : 'badge-borrowed'}">${s.auth_user_id ? 'Nalog aktiviran' : 'Ceka prvu prijavu'}</span>
         <span class="badge ${s.active === false ? 'badge-lost' : 'badge-available'}">${s.active === false ? 'Neaktivan' : 'Aktivan'}</span>
         <button class="btn btn-sm btn-neutral" onclick="openEditStaffAdminModal('${s.id}')"><i class="fa-solid fa-pen"></i></button>
         <button class="btn btn-sm btn-neutral" onclick="deleteStaffAdmin('${s.id}')"><i class="fa-solid fa-trash"></i></button>
@@ -184,9 +188,12 @@ async function saveStaffAdmin() {
   const role = document.getElementById('sa-role').value;
   const active = document.getElementById('sa-active').value === 'true';
   if (!full_name) { IDSS.toast('Unesite ime i prezime.', 'error'); return; }
+  if (!email) { IDSS.toast('Email je obavezan — koristi se za prijavu.', 'error'); return; }
 
-  const dup = ALL_STAFF.find(s => IDSS.normalize(s.full_name) === IDSS.normalize(full_name) && s.id !== id);
-  if (dup) { IDSS.toast('Nalog sa ovim imenom i prezimenom vec postoji.', 'error'); return; }
+  const dupName = ALL_STAFF.find(s => IDSS.normalize(s.full_name) === IDSS.normalize(full_name) && s.id !== id);
+  if (dupName) { IDSS.toast('Nalog sa ovim imenom i prezimenom vec postoji.', 'error'); return; }
+  const dupEmail = ALL_STAFF.find(s => IDSS.normalize(s.email) === IDSS.normalize(email) && s.id !== id);
+  if (dupEmail) { IDSS.toast('Nalog sa ovim emailom vec postoji.', 'error'); return; }
 
   const assignments = [];
   if (role === 'teacher') {

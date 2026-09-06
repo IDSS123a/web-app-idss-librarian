@@ -25,7 +25,7 @@ A barcode-driven digital library management system built for **P.U. Internationa
 ### Entry points (all client-side static pages/routes)
 | Page | Purpose |
 |---|---|
-| `login.html` | Staff account picker (see security note below) |
+| `login.html` | Real login (Supabase Auth email+password) — see §8 |
 | `index.html` | Dashboard |
 | `scan.html` | Scan hub (routes into Add Book / Borrow / Return) |
 | `library.html` (`?action=add` opens Add Book directly) | Inventory + Add Book workflow |
@@ -88,8 +88,8 @@ If real OAuth + RLS + per-record authorization is a hard requirement, that needs
 
 1. **Decide on access control before any public deployment.** At minimum, gate the Hosted Deploy behind an allowlist or an email-domain suffix rule so the app isn't wide open on the internet. This is a deliberate decision to make with you, not something to switch on silently — happy to configure it as soon as you confirm the domain/allowlist.
 2. Seed real IDSS category/subject/grade values if the defaults (Knjiga, Udzbenik, Lektira, Radna sveska, Biljeznica, Djecija knjiga, Referentna knjiga, Nastavni materijal, Ostalo) need adjusting.
-3. Create real staff accounts for your librarians via the "Novi bibliotekar / nalog" button on the login screen (replace/remove the seeded `Administrator` placeholder).
-4. If real identity-based security later becomes a hard requirement, that's a signal to move the backend to a platform that supports OAuth + a real database with RLS — flag this decision point rather than let the current name-based login be mistaken for real auth.
+3. ~~Create real staff accounts... via the login screen~~ — superseded, see §8: staff accounts are now created via Podesavanja → "Novi nalog" (admin-only), and each person claims their own login on the login screen.
+4. ~~If real identity-based security later becomes a hard requirement...~~ — done, see §8 (Supabase Auth + real RLS).
 5. Once ready, use the **Publish tab** to deploy, or ask directly for a Hosted Deploy.
 
 ---
@@ -135,4 +135,42 @@ repo did once the app left that platform.
 **Still open, unchanged from §5**: the access-control decision (§5.1) and
 the move to real auth (§5.4) are still yours to make, not something this
 pass invented an answer for.
+
+---
+
+## 8. Real auth (§5.4 resolved — login is no longer a name picker)
+
+Login is now **Supabase Auth, email + password** — the decision point raised
+in §2/§5.4/§7 above is resolved. What changed:
+
+- **`staff.auth_user_id`** links a `staff` row to a real `auth.users` row.
+  An admin creates the `staff` profile (name/email/role, and for
+  role=teacher, subject/grade rows in `teacher_assignments`) exactly as
+  before via Podesavanja → "Novi nalog" — but no password. The person
+  themselves claims it on the login screen ("Prvi put? Postavite lozinku"),
+  which calls `supabase.auth.signUp()` and then the `claim_staff_account()`
+  Postgres RPC (security-definer) links `auth_user_id` to the staff row
+  whose email matches their verified JWT email — only if that row is still
+  unclaimed. This is the only way `auth_user_id` is ever set for a non-admin;
+  there is no raw `UPDATE staff SET auth_user_id=...` grant.
+- **RLS is now real**, not the fully-open placeholder from §7: every table
+  requires `auth.uid() is not null` to `SELECT`; `staff`/`categories`/
+  `teacher_assignments`/`settings`/`audit_log` require `is_admin()` to
+  write; `books`/`book_copies`/`library_users`/`borrowings` require
+  `is_admin() or librarian` (`can_write()`) to write. `audit_log` is also
+  admin-only to *read* ("korisnik ne vidi sta i administrator"). Both
+  helper functions read the caller's own `staff.role` via `auth.uid()`.
+- **The serverless `/api/tables/*` functions forward the caller's JWT**
+  (`Authorization: Bearer <token>`, read off the incoming request) to
+  Supabase per-request, instead of a bare anon-key client — that's what lets
+  the policies above evaluate `auth.uid()` correctly. Still the anon key
+  only, never `service_role`.
+- **Bootstrap admin**: a `staff` row for `direktor@idss.ba` (role=admin)
+  was pre-created, unclaimed, so the director is the first person able to
+  self-claim + then create/promote everyone else via Podesavanja.
+- **Known gap**: the 23 teacher `staff` rows seeded from the 2026/2027
+  timetable have no email (the timetable doesn't carry one) — they cannot
+  self-claim a login until an admin edits each one to add their real email.
+  Until then they simply exist as data (for `teacher_assignments` /
+  class-bulk-borrow attribution) without being able to sign in themselves.
 

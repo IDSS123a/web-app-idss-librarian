@@ -3,7 +3,7 @@
    ============================================================ */
 
 (async function () {
-  renderShell('statistics');
+  await renderShell('statistics');
   IDSS.showLoading('Racunam statistiku...');
   try {
     const [copies, books, borrowings, students] = await Promise.all([

@@ -6,11 +6,18 @@
 const IDSS = (() => {
 
   // ---------- Generic Table API wrapper ----------
+  // Every call attaches the current Supabase session's access token (if any)
+  // so the serverless /api/tables/* proxy can forward it to Postgres and let
+  // RLS evaluate auth.uid()/auth.jwt() for the real signed-in user.
+  function authHeaders(extra = {}) {
+    return _accessToken ? Object.assign({}, extra, { Authorization: `Bearer ${_accessToken}` }) : extra;
+  }
+
   async function apiList(table, { page = 1, limit = 100, search = '', sort = '' } = {}) {
     const params = new URLSearchParams({ page, limit });
     if (search) params.set('search', search);
     if (sort) params.set('sort', sort);
-    const res = await fetch(`tables/${table}?${params.toString()}`);
+    const res = await fetch(`tables/${table}?${params.toString()}`, { headers: authHeaders() });
     if (!res.ok) throw new Error(`Neuspjelo dohvatanje podataka (${table})`);
     return res.json();
   }
@@ -31,7 +38,7 @@ const IDSS = (() => {
   }
 
   async function apiGet(table, id) {
-    const res = await fetch(`tables/${table}/${id}`);
+    const res = await fetch(`tables/${table}/${id}`, { headers: authHeaders() });
     if (!res.ok) throw new Error('Zapis nije pronadjen');
     return res.json();
   }
@@ -39,7 +46,7 @@ const IDSS = (() => {
   async function apiCreate(table, data) {
     const res = await fetch(`tables/${table}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Neuspjelo cuvanje podataka');
@@ -49,7 +56,7 @@ const IDSS = (() => {
   async function apiUpdate(table, id, data) {
     const res = await fetch(`tables/${table}/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Neuspjelo azuriranje podataka');
@@ -57,7 +64,7 @@ const IDSS = (() => {
   }
 
   async function apiDelete(table, id) {
-    const res = await fetch(`tables/${table}/${id}`, { method: 'DELETE' });
+    const res = await fetch(`tables/${table}/${id}`, { method: 'DELETE', headers: authHeaders() });
     if (!res.ok && res.status !== 204) throw new Error('Neuspjelo brisanje');
     return true;
   }
@@ -69,31 +76,65 @@ const IDSS = (() => {
     return `${prefix}${t}${rnd}`;
   }
 
-  // ---------- Session / attribution (NOT a security boundary — see README) ----------
-  const SESSION_KEY = 'idss_librarian_session';
+  // ---------- Session / auth (real Supabase Auth — email+password) ----------
+  // Public project URL + anon/publishable key: safe to ship in client code by
+  // Supabase's own security model (RLS is the real boundary, not key secrecy).
+  // Same values as the fallback in api/_supabase.js.
+  const SUPABASE_URL = 'https://lhsdqicltpcibemcwtaj.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxoc2RxaWNsdHBjaWJlbWN3dGFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1NDkwMTcsImV4cCI6MjEwNDEyNTAxN30.CAFtTYK82yfY0pHSpU5PWCqVeQ1fnnkJP4PccSAtULU';
 
-  function getSession() {
-    try {
-      const raw = localStorage.getItem(SESSION_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) { return null; }
+  let _sbClient = null;
+  function getAuthClient() {
+    if (!_sbClient) {
+      if (typeof window.supabase === 'undefined') throw new Error('Supabase JS SDK nije ucitan (provjeri <script> tag na stranici).');
+      _sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+    return _sbClient;
   }
 
-  function setSession(staff) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(staff));
+  let _accessToken = null;   // current session JWT, attached to every tables/* fetch
+  let _staffProfile = null;  // the `staff` row linked to the signed-in auth user
+  let _authReady = false;    // true once initAuthSession() has resolved at least once
+
+  // Reads the current Supabase session (if any) and loads the linked `staff`
+  // profile (matched by auth_user_id). No linked/active staff row -> treated
+  // as "not signed in" for this app, even if the Supabase session is valid,
+  // since an app role is required for every page.
+  async function initAuthSession() {
+    const client = getAuthClient();
+    const { data: { session } } = await client.auth.getSession();
+    _accessToken = session ? session.access_token : null;
+    if (!session) { _staffProfile = null; _authReady = true; return null; }
+
+    const { data: staffRow } = await client.from('staff').select('*')
+      .eq('auth_user_id', session.user.id).eq('active', true).maybeSingle();
+    _staffProfile = staffRow || null;
+    _authReady = true;
+
+    if (!_authStateSubscribed) {
+      _authStateSubscribed = true;
+      client.auth.onAuthStateChange((_event, sess) => { _accessToken = sess ? sess.access_token : null; });
+    }
+    return _staffProfile;
+  }
+  let _authStateSubscribed = false;
+
+  // Synchronous read of the cached staff profile — valid once requireSession()
+  // (called by shell.js's renderShell, awaited by every page) has resolved.
+  function getSession() { return _staffProfile; }
+
+  async function clearSession() {
+    _staffProfile = null; _accessToken = null;
+    try { await getAuthClient().auth.signOut(); } catch (e) { /* best-effort */ }
   }
 
-  function clearSession() {
-    localStorage.removeItem(SESSION_KEY);
-  }
-
-  function requireSession() {
-    const s = getSession();
-    if (!s) {
+  async function requireSession() {
+    if (!_authReady) await initAuthSession();
+    if (!_staffProfile) {
       window.location.href = 'login.html';
       return null;
     }
-    return s;
+    return _staffProfile;
   }
 
   function hasRole(...roles) {
@@ -304,7 +345,7 @@ const IDSS = (() => {
 
   return {
     apiList, apiListAll, apiGet, apiCreate, apiUpdate, apiDelete,
-    uid, getSession, setSession, clearSession, requireSession, hasRole,
+    uid, getAuthClient, initAuthSession, getSession, clearSession, requireSession, hasRole,
     toast, showLoading, hideLoading, logAudit,
     fmtDate, fmtDateTime, daysBetween, addDays, isOverdue,
     initTheme, toggleTheme, normalize, normToken,

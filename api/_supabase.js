@@ -13,13 +13,27 @@ const { createClient } = require('@supabase/supabase-js');
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://lhsdqicltpcibemcwtaj.supabase.co';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxoc2RxaWNsdHBjaWJlbWN3dGFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1NDkwMTcsImV4cCI6MjEwNDEyNTAxN30.CAFtTYK82yfY0pHSpU5PWCqVeQ1fnnkJP4PccSAtULU';
 
-function getClient() {
+// `accessToken` is the calling user's Supabase session JWT (from the
+// frontend's Authorization header) -- forwarding it is what lets Postgres
+// RLS policies evaluate auth.uid()/auth.jwt() for that user. Without it,
+// every request is anonymous and RLS (deliberately, since real accounts
+// went live) rejects everything but a handful of public-read policies.
+function getClient(accessToken) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error('Missing SUPABASE_URL / SUPABASE_ANON_KEY environment variables');
   }
   return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: false }
+    auth: { persistSession: false },
+    global: accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined
   });
+}
+
+// Pulls the bearer token out of an incoming Vercel request, if present.
+function getAccessToken(req) {
+  const header = req.headers && req.headers.authorization;
+  if (!header) return null;
+  const m = /^Bearer\s+(.+)$/i.exec(header);
+  return m ? m[1] : null;
 }
 
 // Table -> text columns eligible for the free-text `search` query param.
@@ -53,4 +67,4 @@ function nullifyEmptyStrings(body) {
   return out;
 }
 
-module.exports = { getClient, SEARCHABLE_COLUMNS, KNOWN_TABLES, nullifyEmptyStrings };
+module.exports = { getClient, getAccessToken, SEARCHABLE_COLUMNS, KNOWN_TABLES, nullifyEmptyStrings };

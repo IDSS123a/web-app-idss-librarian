@@ -10,7 +10,7 @@ let CURRENT_PAGE = 1;
 const PAGE_SIZE = 15;
 
 (async function init() {
-  renderShell('library');
+  await renderShell('library');
   await loadCategories();
   await loadInventory();
 

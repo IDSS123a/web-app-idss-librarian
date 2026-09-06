@@ -1,7 +1,7 @@
 // GET    /api/tables/:table/:id -> record
 // PATCH  /api/tables/:table/:id -> updated record
 // DELETE /api/tables/:table/:id -> 204
-const { getClient, KNOWN_TABLES, nullifyEmptyStrings } = require('../../_supabase');
+const { getClient, getAccessToken, KNOWN_TABLES, nullifyEmptyStrings } = require('../../_supabase');
 
 module.exports = async (req, res) => {
   const { table, id } = req.query;
@@ -11,7 +11,7 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const supabase = getClient();
+  const supabase = getClient(getAccessToken(req));
 
   try {
     if (req.method === 'GET') {

@@ -41,7 +41,12 @@
       {
         "name": "grade",
         "type": "text",
-        "description": "Grade/class(es) taught, comma-separated (role=teacher only), e.g. '6' or '6, 7'"
+        "description": "Grade/class(es) taught, comma-separated (role=teacher only), e.g. '6' or '6, 7'. Legacy/best-effort single value -- teacher_assignments is the source of truth for multi-subject/grade teachers."
+      },
+      {
+        "name": "auth_user_id",
+        "type": "text",
+        "description": "FK -> auth.users.id (Supabase Auth). Null until the person claims this profile via the login page's first-time-password flow, matched by email. Never set directly by app code except the claim_staff_account() RPC."
       }
     ]
   },

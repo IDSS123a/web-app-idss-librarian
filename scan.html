@@ -47,8 +47,9 @@
 </div>
 <div id="shell-bottomnav-slot"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="js/core.js"></script>
 <script src="js/shell.js"></script>
-<script>renderShell('scan');</script>
+<script>(async function () { await renderShell('scan'); })();</script>
 </body>
 </html>

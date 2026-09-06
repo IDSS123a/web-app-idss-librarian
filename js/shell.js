@@ -4,14 +4,14 @@
    ============================================================ */
 
 const NAV_ITEMS = [
-  { key: 'dashboard', href: 'index.html', label: 'Kontrolna tabla', icon: 'fa-gauge-high', roles: ['admin', 'librarian', 'viewer'] },
+  { key: 'dashboard', href: 'index.html', label: 'Kontrolna tabla', icon: 'fa-gauge-high', roles: ['admin', 'librarian', 'viewer', 'teacher'] },
   { key: 'scan', href: 'scan.html', label: 'Skeniraj', icon: 'fa-barcode', roles: ['admin', 'librarian'], scan: true },
-  { key: 'library', href: 'library.html', label: 'Biblioteka', icon: 'fa-book', roles: ['admin', 'librarian', 'viewer'] },
-  { key: 'borrowing', href: 'borrowing.html', label: 'Zaduzenja', icon: 'fa-right-from-bracket', roles: ['admin', 'librarian', 'viewer'] },
-  { key: 'returns', href: 'returns.html', label: 'Povrati', icon: 'fa-right-to-bracket', roles: ['admin', 'librarian', 'viewer'] },
-  { key: 'students', href: 'students.html', label: 'Ucenici', icon: 'fa-user-graduate', roles: ['admin', 'librarian', 'viewer'] },
-  { key: 'statistics', href: 'statistics.html', label: 'Statistika', icon: 'fa-chart-pie', roles: ['admin', 'librarian', 'viewer'] },
-  { key: 'reports', href: 'reports.html', label: 'Izvjestaji', icon: 'fa-file-export', roles: ['admin', 'librarian', 'viewer'] },
+  { key: 'library', href: 'library.html', label: 'Biblioteka', icon: 'fa-book', roles: ['admin', 'librarian', 'viewer', 'teacher'] },
+  { key: 'borrowing', href: 'borrowing.html', label: 'Zaduzenja', icon: 'fa-right-from-bracket', roles: ['admin', 'librarian', 'viewer', 'teacher'] },
+  { key: 'returns', href: 'returns.html', label: 'Povrati', icon: 'fa-right-to-bracket', roles: ['admin', 'librarian', 'viewer', 'teacher'] },
+  { key: 'students', href: 'students.html', label: 'Ucenici', icon: 'fa-user-graduate', roles: ['admin', 'librarian', 'viewer', 'teacher'] },
+  { key: 'statistics', href: 'statistics.html', label: 'Statistika', icon: 'fa-chart-pie', roles: ['admin', 'librarian', 'viewer', 'teacher'] },
+  { key: 'reports', href: 'reports.html', label: 'Izvjestaji', icon: 'fa-file-export', roles: ['admin', 'librarian', 'viewer', 'teacher'] },
   { key: 'settings', href: 'settings.html', label: 'Podesavanja', icon: 'fa-gear', roles: ['admin'] },
 ];
 
@@ -20,8 +20,8 @@ function initials(name) {
   return name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function renderShell(activeKey) {
-  const session = IDSS.requireSession();
+async function renderShell(activeKey) {
+  const session = await IDSS.requireSession();
   if (!session) return;
 
   const visibleItems = NAV_ITEMS.filter(i => i.roles.includes(session.role));
@@ -94,11 +94,11 @@ function renderShell(activeKey) {
 }
 
 function roleLabel(role) {
-  return { admin: 'Administrator', librarian: 'Bibliotekar', viewer: 'Pregled' }[role] || role;
+  return { admin: 'Administrator', librarian: 'Bibliotekar', viewer: 'Pregled', teacher: 'Nastavnik' }[role] || role;
 }
 
-function doLogout() {
-  IDSS.clearSession();
+async function doLogout() {
+  await IDSS.clearSession();
   window.location.href = 'login.html';
 }
 
