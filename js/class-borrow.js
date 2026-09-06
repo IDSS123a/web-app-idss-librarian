@@ -65,9 +65,16 @@ async function selectBookForClassBorrow(bookId) {
     ? classes.map(c => `<option value="${escapeHtmlB(c)}">${escapeHtmlB(c)}</option>`).join('')
     : `<option value="">(nema razreda sa aktivnim ucenicima)</option>`;
   // Pre-select the class matching the book's grade, if any, since that's the
-  // overwhelmingly common case (grade 6 textbook -> grade 6 class).
+  // overwhelmingly common case (grade 6 textbook -> grade 6 class). Real
+  // class names here are Roman numerals (I..IX per library_users.class_name)
+  // while book_copies.grade / teacher_assignments.grade are Arabic (1..9),
+  // so compare via the same numeral both ways rather than raw string match.
   if (CB_STATE.bookGrade) {
-    const match = classes.find(c => IDSS.normalize(c).startsWith(IDSS.normalize(CB_STATE.bookGrade)));
+    const wantArabic = IDSS.normalize(CB_STATE.bookGrade);
+    const match = classes.find(c => {
+      const cn = IDSS.normalize(c);
+      return cn === wantArabic || cn.startsWith(wantArabic) || romanToArabic(cn) === wantArabic;
+    });
     if (match) document.getElementById('cb-class-select').value = match;
   }
 
@@ -81,6 +88,13 @@ function teacherAssignmentsSummary(teacherId) {
   const bySubj = {};
   rows.forEach(a => { (bySubj[a.subject] = bySubj[a.subject] || []).push(a.grade); });
   return ' — ' + Object.entries(bySubj).map(([s, grades]) => `${s} (${grades.join(', ')})`).join('; ');
+}
+
+const ROMAN_GRADES = { i: '1', ii: '2', iii: '3', iv: '4', v: '5', vi: '6', vii: '7', viii: '8', ix: '9' };
+function romanToArabic(normalizedClassName) {
+  // Only the leading roman token matters (a class can be "VI" or "VI-A" etc.)
+  const token = normalizedClassName.split(/[^a-z]/)[0];
+  return ROMAN_GRADES[token] || null;
 }
 
 function mostCommonB(arr) {
