@@ -73,6 +73,7 @@ function renderBorrowingTable() {
       <td>${escapeHtmlB(t.inventory_number)}</td>
       <td>${escapeHtmlB(t.student_name)}</td>
       <td>${escapeHtmlB(t.student_class || '—')}</td>
+      <td>${escapeHtmlB(t.teacher_name || '—')}</td>
       <td>${IDSS.fmtDate(t.borrowed_at)}</td>
       <td>${IDSS.fmtDate(t.due_date)}</td>
       <td>${statusLabel}</td>
@@ -225,7 +226,8 @@ function exportBorrowingsExcel() {
   try {
     const rows = ALL_BORROWINGS.map(t => ({
       'Knjiga': t.book_title, 'Inventarni broj': t.inventory_number, 'Ucenik': t.student_name,
-      'ID ucenika': t.student_id, 'Razred': t.student_class, 'Datum zaduzenja': IDSS.fmtDate(t.borrowed_at),
+      'ID ucenika': t.student_id, 'Razred': t.student_class, 'Nastavnik': t.teacher_name || '',
+      'Datum zaduzenja': IDSS.fmtDate(t.borrowed_at),
       'Rok povrata': IDSS.fmtDate(t.due_date), 'Datum povrata': t.returned_at ? IDSS.fmtDate(t.returned_at) : '',
       'Status': t.status, 'Bibliotekar (zaduzenje)': t.librarian_borrowed, 'Bibliotekar (povrat)': t.librarian_returned || ''
     }));

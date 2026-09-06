@@ -24,13 +24,24 @@
         "options": [
           "admin",
           "librarian",
-          "viewer"
+          "viewer",
+          "teacher"
         ]
       },
       {
         "name": "active",
         "type": "bool",
         "description": "Whether this staff account is active"
+      },
+      {
+        "name": "subject",
+        "type": "text",
+        "description": "Subject(s) taught, comma-separated (role=teacher only), e.g. 'Matematika' or 'Matematika, Fizika'"
+      },
+      {
+        "name": "grade",
+        "type": "text",
+        "description": "Grade/class(es) taught, comma-separated (role=teacher only), e.g. '6' or '6, 7'"
       }
     ]
   },
@@ -350,6 +361,16 @@
           "lost",
           "damaged"
         ]
+      },
+      {
+        "name": "teacher_id",
+        "type": "text",
+        "description": "FK -> staff.id of the teacher this class-set was borrowed/returned through (class bulk-borrow workflow), if any"
+      },
+      {
+        "name": "teacher_name",
+        "type": "text",
+        "description": "Denormalized teacher full name, for display/export without a join"
       }
     ]
   },

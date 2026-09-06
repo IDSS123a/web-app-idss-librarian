@@ -75,13 +75,13 @@ async function runReport(key) {
       case 'overdue':
         rows = borrowings.filter(t => t.status === 'borrowed' && IDSS.isOverdue(t.due_date)).map(t => ({
           'Knjiga': t.book_title, 'Inv. broj': t.inventory_number, 'Ucenik': t.student_name, 'Razred': t.student_class,
-          'Rok povrata': IDSS.fmtDate(t.due_date), 'Kasni (dana)': IDSS.daysBetween(t.due_date, new Date().toISOString())
+          'Nastavnik': t.teacher_name || '', 'Rok povrata': IDSS.fmtDate(t.due_date), 'Kasni (dana)': IDSS.daysBetween(t.due_date, new Date().toISOString())
         }));
         sheetName = 'Kasnjenja'; filename = 'IDSS_Library_Overdue'; break;
       case 'history':
         rows = borrowings.map(t => ({
           'Knjiga': t.book_title, 'Inv. broj': t.inventory_number, 'Ucenik': t.student_name, 'Razred': t.student_class,
-          'Zaduzeno': IDSS.fmtDate(t.borrowed_at), 'Rok': IDSS.fmtDate(t.due_date), 'Vraceno': t.returned_at ? IDSS.fmtDate(t.returned_at) : '',
+          'Nastavnik': t.teacher_name || '', 'Zaduzeno': IDSS.fmtDate(t.borrowed_at), 'Rok': IDSS.fmtDate(t.due_date), 'Vraceno': t.returned_at ? IDSS.fmtDate(t.returned_at) : '',
           'Status': t.status, 'Bibliotekar (zaduzenje)': t.librarian_borrowed, 'Bibliotekar (povrat)': t.librarian_returned || ''
         }));
         sheetName = 'Istorija'; filename = 'IDSS_Library_History'; break;

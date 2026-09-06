@@ -61,11 +61,22 @@
     </div>
     <div class="field">
       <label>Uloga</label>
-      <select class="input" id="new-staff-role">
+      <select class="input" id="new-staff-role" onchange="toggleTeacherFields()">
         <option value="librarian">Bibliotekar</option>
+        <option value="teacher">Nastavnik</option>
         <option value="viewer">Pregled (samo citanje)</option>
         <option value="admin">Administrator</option>
       </select>
+    </div>
+    <div id="teacher-fields-wrap" class="hidden">
+      <div class="field">
+        <label>Predmet(i) koje predaje (opciono)</label>
+        <input class="input" id="new-staff-subject" placeholder="npr. Matematika">
+      </div>
+      <div class="field">
+        <label>Razred(i) koje predaje (opciono)</label>
+        <input class="input" id="new-staff-grade" placeholder="npr. 6 ili 6, 7">
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-neutral" onclick="hideAddStaff()">Otkazi</button>
@@ -92,7 +103,7 @@ async function loadStaff() {
         <div class="user-avatar">${(s.full_name||'?').split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase()}</div>
         <div class="staff-pick-meta">
           <div class="staff-pick-name">${s.full_name}</div>
-          <div class="staff-pick-role">${({admin:'Administrator',librarian:'Bibliotekar',viewer:'Pregled'})[s.role] || s.role}</div>
+          <div class="staff-pick-role">${({admin:'Administrator',librarian:'Bibliotekar',viewer:'Pregled',teacher:'Nastavnik'})[s.role] || s.role}${s.role==='teacher' && (s.subject||s.grade) ? ' · ' + [s.subject, s.grade ? 'razred '+s.grade : ''].filter(Boolean).join(', ') : ''}</div>
         </div>
         <i class="fa-solid fa-chevron-right text-muted"></i>
       </div>
@@ -109,15 +120,21 @@ function selectStaff(staff) {
 
 function showAddStaff() { document.getElementById('add-staff-modal').classList.remove('hidden'); }
 function hideAddStaff() { document.getElementById('add-staff-modal').classList.add('hidden'); }
+function toggleTeacherFields() {
+  const isTeacher = document.getElementById('new-staff-role').value === 'teacher';
+  document.getElementById('teacher-fields-wrap').classList.toggle('hidden', !isTeacher);
+}
 
 async function createStaff() {
   const name = document.getElementById('new-staff-name').value.trim();
   const email = document.getElementById('new-staff-email').value.trim();
   const role = document.getElementById('new-staff-role').value;
+  const subject = document.getElementById('new-staff-subject').value.trim();
+  const grade = document.getElementById('new-staff-grade').value.trim();
   if (!name) { IDSS.toast('Unesite ime i prezime.', 'error'); return; }
   IDSS.showLoading('Cuvanje naloga...');
   try {
-    const staff = await IDSS.apiCreate('staff', { id: IDSS.uid('staff-'), full_name: name, email, role, active: true });
+    const staff = await IDSS.apiCreate('staff', { id: IDSS.uid('staff-'), full_name: name, email, role, active: true, subject, grade });
     hideAddStaff();
     IDSS.toast('Nalog kreiran.', 'success');
     selectStaff(staff);

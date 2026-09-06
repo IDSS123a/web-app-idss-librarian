@@ -105,10 +105,14 @@ async function loadStaffAdmin() {
   ALL_STAFF = await IDSS.apiListAll('staff');
   renderStaffListAdmin();
 }
+const STAFF_ROLE_LABELS = { admin: 'Administrator', librarian: 'Bibliotekar', viewer: 'Pregled', teacher: 'Nastavnik' };
 function renderStaffListAdmin() {
-  document.getElementById('staff-list-admin').innerHTML = ALL_STAFF.map(s => `
+  document.getElementById('staff-list-admin').innerHTML = ALL_STAFF.map(s => {
+    const teacherInfo = s.role === 'teacher' && (s.subject || s.grade) ? ` · ${[s.subject, s.grade ? 'razred ' + s.grade : ''].filter(Boolean).join(', ')}` : '';
+    return `
     <div class="flex items-center justify-between" style="padding:8px 0; border-bottom:1px solid var(--border-soft);">
-      <div><strong>${s.full_name}</strong> <span class="text-muted text-sm">(${({admin:'Administrator',librarian:'Bibliotekar',viewer:'Pregled'})[s.role] || s.role})</span></div>
+      <div><strong>${s.full_name}</strong> <span class="text-muted text-sm">(${STAFF_ROLE_LABELS[s.role] || s.role}${teacherInfo})</span></div>
       <span class="badge ${s.active === false ? 'badge-lost' : 'badge-available'}">${s.active === false ? 'Neaktivan' : 'Aktivan'}</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }

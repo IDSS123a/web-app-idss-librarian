@@ -16,9 +16,14 @@ const STAFF_HEADER_ALIASES = {
   full_name: ['full_name', 'ime i prezime', 'ime', 'naziv', 'name'],
   email: ['email', 'e-mail', 'e mail'],
   role: ['role', 'uloga'],
-  active: ['active', 'aktivan']
+  active: ['active', 'aktivan'],
+  subject: ['subject', 'predmet', 'predmeti'],
+  grade: ['grade', 'razred', 'razredi']
 };
-const STAFF_ROLE_MAP = { administrator: 'admin', admin: 'admin', bibliotekar: 'librarian', librarian: 'librarian', pregled: 'viewer', viewer: 'viewer' };
+const STAFF_ROLE_MAP = {
+  administrator: 'admin', admin: 'admin', bibliotekar: 'librarian', librarian: 'librarian',
+  pregled: 'viewer', viewer: 'viewer', nastavnik: 'teacher', teacher: 'teacher', profesor: 'teacher'
+};
 
 let STAFF_IMPORT_STATE = { rows: [] };
 
@@ -46,8 +51,9 @@ function showStaffImportError(msg) {
 
 function downloadStaffImportTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
-    ['full_name', 'email', 'role', 'active'],
-    ['Amina Hodzic', 'amina.hodzic@idss.local', 'librarian', 'true']
+    ['full_name', 'email', 'role', 'active', 'subject', 'grade'],
+    ['Amina Hodzic', 'amina.hodzic@idss.local', 'librarian', 'true', '', ''],
+    ['Emir Kovac', 'emir.kovac@idss.local', 'teacher', 'true', 'Matematika', '6']
   ]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Osoblje');
@@ -146,6 +152,7 @@ function buildStaffImportPreview(rawRows) {
 
     return {
       full_name: fullName, email: (r.email || '').trim(), role: role || 'librarian', active,
+      subject: (r.subject || '').trim(), grade: (r.grade || '').trim(),
       status, errors, existingId: existing ? existing.id : null, existingRole: existing ? existing.role : ''
     };
   });
@@ -163,15 +170,16 @@ function renderStaffImportPreview() {
   document.getElementById('staff-import-preview-summary').textContent =
     `${newCount} novih naloga, ${existsCount} vec postoji (bice azurirano), ${errorCount} sa greskom.`;
 
-  const roleLabel = { admin: 'Administrator', librarian: 'Bibliotekar', viewer: 'Pregled' };
+  const roleLabel = { admin: 'Administrator', librarian: 'Bibliotekar', viewer: 'Pregled', teacher: 'Nastavnik' };
   document.getElementById('staff-import-preview-tbody').innerHTML = rows.map(r => {
     const badge = r.status === 'new' ? '<span class="badge badge-available">Novo</span>' :
       r.status === 'exists' ? '<span class="badge badge-borrowed">Vec postoji</span>' :
       '<span class="badge badge-overdue">Greska</span>';
     const details = r.status === 'exists' ? `Postojeca uloga: ${roleLabel[r.existingRole] || r.existingRole}` : r.errors.join('; ') || '—';
+    const psg = [r.subject, r.grade].filter(Boolean).join(' / ') || '—';
     return `<tr>
       <td>${badge}</td><td>${escH(r.full_name)}</td><td>${escH(r.email || '—')}</td>
-      <td>${roleLabel[r.role] || r.role}</td><td class="text-sm text-muted">${details}</td>
+      <td>${roleLabel[r.role] || r.role}</td><td>${escH(psg)}</td><td class="text-sm text-muted">${details}</td>
     </tr>`;
   }).join('');
 }
@@ -187,12 +195,12 @@ async function confirmStaffImport() {
   try {
     for (const r of rows) {
       if (r.status === 'new') {
-        const created = await IDSS.apiCreate('staff', { id: IDSS.uid('staff-'), full_name: r.full_name, email: r.email, role: r.role, active: r.active });
+        const created = await IDSS.apiCreate('staff', { id: IDSS.uid('staff-'), full_name: r.full_name, email: r.email, role: r.role, active: r.active, subject: r.subject, grade: r.grade });
         ALL_STAFF.push(created);
         await IDSS.logAudit('staff_created', 'staff', created.id, { full_name: r.full_name, source: 'bulk_import' });
         newCount++;
       } else {
-        const updated = await IDSS.apiUpdate('staff', r.existingId, { email: r.email, role: r.role, active: r.active });
+        const updated = await IDSS.apiUpdate('staff', r.existingId, { email: r.email, role: r.role, active: r.active, subject: r.subject, grade: r.grade });
         const idx = ALL_STAFF.findIndex(s => s.id === r.existingId);
         if (idx >= 0) ALL_STAFF[idx] = updated;
         await IDSS.logAudit('staff_updated', 'staff', r.existingId, { full_name: r.full_name, source: 'bulk_import' });
