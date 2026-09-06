@@ -229,6 +229,21 @@ async function saveStaffAdmin() {
   const dupEmail = ALL_STAFF.find(s => IDSS.normalize(s.email) === IDSS.normalize(email) && s.id !== id);
   if (dupEmail) { IDSS.toast('Nalog sa ovim emailom vec postoji.', 'error'); return; }
 
+  // Never let this save leave zero active admins -- otherwise nobody could
+  // ever log back in to fix it.
+  if (id) {
+    const existing = ALL_STAFF.find(s => s.id === id);
+    const wasActiveAdmin = existing && existing.role === 'admin' && existing.active !== false;
+    const staysActiveAdmin = role === 'admin' && active;
+    if (wasActiveAdmin && !staysActiveAdmin) {
+      const otherActiveAdmins = ALL_STAFF.filter(s => s.id !== id && s.role === 'admin' && s.active !== false);
+      if (otherActiveAdmins.length === 0) {
+        IDSS.toast('Ne mozete ukloniti ulogu ili deaktivirati posljednjeg administratora. Prvo dodijelite admin ulogu drugom nalogu.', 'error');
+        return;
+      }
+    }
+  }
+
   const assignments = [];
   if (role === 'teacher') {
     document.querySelectorAll('#sa-assignment-rows .sa-assignment-row').forEach(row => {
@@ -281,7 +296,13 @@ async function saveStaffAdmin() {
 async function deleteStaffAdmin(id) {
   const s = ALL_STAFF.find(x => x.id === id);
   if (!s) return;
-  if (id === 'staff-admin') { IDSS.toast('Osnovni administratorski nalog se ne moze obrisati.', 'error'); return; }
+  if (s.role === 'admin' && s.active !== false) {
+    const otherActiveAdmins = ALL_STAFF.filter(x => x.id !== id && x.role === 'admin' && x.active !== false);
+    if (otherActiveAdmins.length === 0) {
+      IDSS.toast('Ne mozete obrisati posljednjeg administratora. Prvo dodijelite admin ulogu drugom nalogu.', 'error');
+      return;
+    }
+  }
   if (!confirm(`Da li ste sigurni da zelite obrisati nalog "${s.full_name}"? Ova radnja se ne moze ponistiti.`)) return;
 
   IDSS.showLoading('Brisanje...');

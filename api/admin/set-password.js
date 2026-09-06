@@ -67,11 +67,35 @@ module.exports = async (req, res) => {
       const { error } = await adminClient.auth.admin.updateUserById(targetStaff.auth_user_id, { password: String(newPassword) });
       if (error) throw error;
     } else {
+      let authUserId = null;
       const { data: created, error } = await adminClient.auth.admin.createUser({
         email: targetStaff.email, password: String(newPassword), email_confirm: true
       });
-      if (error) throw error;
-      const { error: linkErr } = await adminClient.from('staff').update({ auth_user_id: created.user.id }).eq('id', staffId);
+      if (error) {
+        // Someone (e.g. the person themselves, via "first time set password")
+        // may have already started a signup for this email without ever
+        // confirming/claiming it -- createUser then fails as a duplicate.
+        // Find that existing auth user and finish the job on it instead of
+        // failing outright.
+        if (!/already.*registered|already exists/i.test(error.message || '')) throw error;
+        let page = 1, found = null;
+        while (!found) {
+          const { data: listed, error: listErr } = await adminClient.auth.admin.listUsers({ page, perPage: 200 });
+          if (listErr) throw listErr;
+          found = (listed.users || []).find(u => (u.email || '').toLowerCase() === targetStaff.email.toLowerCase());
+          if (found || !listed.users || listed.users.length < 200) break;
+          page++;
+        }
+        if (!found) throw error; // genuinely couldn't locate it -- surface the original error
+        const { error: updErr } = await adminClient.auth.admin.updateUserById(found.id, {
+          password: String(newPassword), email_confirm: true
+        });
+        if (updErr) throw updErr;
+        authUserId = found.id;
+      } else {
+        authUserId = created.user.id;
+      }
+      const { error: linkErr } = await adminClient.from('staff').update({ auth_user_id: authUserId }).eq('id', staffId);
       if (linkErr) throw linkErr;
     }
 
