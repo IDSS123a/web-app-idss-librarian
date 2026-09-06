@@ -160,6 +160,7 @@ function openAddStaffAdminModal() {
   document.getElementById('sa-role').value = 'librarian';
   document.getElementById('sa-active').value = 'true';
   document.getElementById('sa-assignment-rows').innerHTML = '';
+  document.getElementById('sa-password-wrap').classList.add('hidden');
   toggleSaTeacherFields();
   document.getElementById('staff-admin-modal').classList.remove('hidden');
 }
@@ -177,7 +178,40 @@ function openEditStaffAdminModal(id) {
   if (rows.length) rows.forEach(a => addSaAssignmentRow(a.subject, a.grade));
   else if (s.role === 'teacher' && (s.subject || s.grade)) addSaAssignmentRow(s.subject, s.grade); // legacy single-value fallback
   toggleSaTeacherFields();
+  document.getElementById('sa-password-wrap').classList.remove('hidden');
+  document.getElementById('sa-password-btn-label').textContent = s.auth_user_id ? 'Resetuj lozinku' : 'Postavi lozinku (bez cekanja na email)';
   document.getElementById('staff-admin-modal').classList.remove('hidden');
+}
+
+async function setStaffPasswordPrompt() {
+  const staffId = document.getElementById('sa-edit-id').value;
+  const email = document.getElementById('sa-email').value.trim();
+  if (!staffId) return;
+  if (!email) { IDSS.toast('Prvo unesite i sacuvajte email za ovaj nalog.', 'error'); return; }
+  const pw1 = prompt('Nova lozinka za ovaj nalog (najmanje 8 znakova):');
+  if (!pw1) return;
+  if (pw1.length < 8) { IDSS.toast('Lozinka mora imati najmanje 8 znakova.', 'error'); return; }
+  const pw2 = prompt('Ponovite lozinku:');
+  if (pw1 !== pw2) { IDSS.toast('Lozinke se ne poklapaju.', 'error'); return; }
+
+  IDSS.showLoading('Postavljanje lozinke...');
+  try {
+    const res = await fetch('/api/admin/set-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${IDSS.getAccessToken()}` },
+      body: JSON.stringify({ staffId, newPassword: pw1 })
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || 'Greska pri postavljanju lozinke.');
+    await IDSS.logAudit('staff_password_set_by_admin', 'staff', staffId, {});
+    IDSS.toast('Lozinka je postavljena. Prenesite je osobi na siguran nacin.', 'success');
+    await loadStaffAdmin();
+  } catch (e) {
+    console.error(e);
+    IDSS.toast(e.message || 'Greska pri postavljanju lozinke.', 'error');
+  } finally {
+    IDSS.hideLoading();
+  }
 }
 function closeStaffAdminModal() { document.getElementById('staff-admin-modal').classList.add('hidden'); }
 

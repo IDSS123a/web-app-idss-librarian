@@ -142,6 +142,10 @@ const IDSS = (() => {
     return !!s && roles.includes(s.role);
   }
 
+  // Exposed so pages can call non-`tables/*` API endpoints (e.g. admin
+  // password-management) with the same bearer token apiList/etc. use.
+  function getAccessToken() { return _accessToken; }
+
   // ---------- Toasts ----------
   function ensureToastRoot() {
     let root = document.getElementById('toast-root');
@@ -345,7 +349,7 @@ const IDSS = (() => {
 
   return {
     apiList, apiListAll, apiGet, apiCreate, apiUpdate, apiDelete,
-    uid, getAuthClient, initAuthSession, getSession, clearSession, requireSession, hasRole,
+    uid, getAuthClient, initAuthSession, getSession, getAccessToken, clearSession, requireSession, hasRole,
     toast, showLoading, hideLoading, logAudit,
     fmtDate, fmtDateTime, daysBetween, addDays, isOverdue,
     initTheme, toggleTheme, normalize, normToken,
