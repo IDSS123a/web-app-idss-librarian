@@ -51,6 +51,11 @@
         "name": "active",
         "type": "bool",
         "description": "Whether category is available for selection"
+      },
+      {
+        "name": "sort_order",
+        "type": "number",
+        "description": "Physical-shelf display order for this category (lower = earlier). Set by Director's choice, not invented by the agent."
       }
     ]
   },

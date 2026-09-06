@@ -5,6 +5,7 @@
 renderShell('reports');
 
 const REPORTS = [
+  { key: 'physical_layout', label: 'Fizicki raspored', icon: 'fa-list-ol', desc: 'Redoslijed za slaganje na police: kategorija -> predmet -> razred -> naslov' },
   { key: 'full_inventory', label: 'Kompletan inventar', icon: 'fa-book', desc: 'Sve stavke u biblioteci' },
   { key: 'currently_borrowed', label: 'Trenutno zaduzeno', icon: 'fa-right-from-bracket', desc: 'Sve aktivne pozajmice' },
   { key: 'overdue', label: 'Kasnjenja', icon: 'fa-triangle-exclamation', desc: 'Knjige koje kasne sa povratom' },
@@ -26,13 +27,45 @@ document.getElementById('reports-grid').innerHTML = REPORTS.map(r => `
 async function runReport(key) {
   IDSS.showLoading('Priprema izvjestaja...');
   try {
-    const [copies, books, borrowings, students] = await Promise.all([
-      IDSS.apiListAll('book_copies'), IDSS.apiListAll('books'), IDSS.apiListAll('borrowings'), IDSS.apiListAll('library_users')
+    const [copies, books, borrowings, students, categories] = await Promise.all([
+      IDSS.apiListAll('book_copies'), IDSS.apiListAll('books'), IDSS.apiListAll('borrowings'), IDSS.apiListAll('library_users'), IDSS.apiListAll('categories')
     ]);
     const bookMap = Object.fromEntries(books.map(b => [b.id, b]));
     let rows = [], sheetName = 'Izvjestaj', filename = 'IDSS_Report';
 
     switch (key) {
+      case 'physical_layout': {
+        // Same order as the Biblioteka page's default sort (see
+        // comparePhysicalOrder in js/library.js): kategorija (sort_order,
+        // Direktorov izbor) -> predmet -> razred -> naslov. Kept in sync
+        // manually since this page doesn't load library.js.
+        const catOrder = Object.fromEntries(categories.map(c => [c.name, typeof c.sort_order === 'number' ? c.sort_order : 99]));
+        const gradeKey = (g) => {
+          if (!g) return [1, Number.MAX_SAFE_INTEGER];
+          const m = String(g).match(/^(\d+)/);
+          return m ? [0, parseInt(m[1], 10)] : [0, Number.MAX_SAFE_INTEGER - 1];
+        };
+        const sorted = copies.slice().sort((ca, cb) => {
+          const ba = bookMap[ca.book_id] || {}, bb = bookMap[cb.book_id] || {};
+          const catDiff = (catOrder[ba.category] ?? 99) - (catOrder[bb.category] ?? 99);
+          if (catDiff) return catDiff;
+          const subjDiff = (ca.subject || '').localeCompare(cb.subject || '');
+          if (subjDiff) return subjDiff;
+          const ga = gradeKey(ca.grade), gb = gradeKey(cb.grade);
+          if (ga[0] !== gb[0]) return ga[0] - gb[0];
+          if (ga[1] !== gb[1]) return ga[1] - gb[1];
+          return (ba.title || '').localeCompare(bb.title || '');
+        });
+        rows = sorted.map((c, i) => {
+          const b = bookMap[c.book_id] || {};
+          return {
+            'Red. br.': i + 1, 'Kategorija': b.category || '', 'Predmet': c.subject || '', 'Razred': c.grade || '',
+            'Naslov': b.title || '', 'Autor': b.author || '', 'Inventarni broj': c.inventory_number,
+            'Trenutna polica (upisana)': c.shelf_location || '', 'Status': c.status
+          };
+        });
+        sheetName = 'Fizicki_raspored'; filename = 'IDSS_Library_Physical_Layout'; break;
+      }
       case 'full_inventory':
         rows = copies.map(c => invRow(c, bookMap[c.book_id]));
         sheetName = 'Inventar'; filename = 'IDSS_Library_Full_Inventory'; break;

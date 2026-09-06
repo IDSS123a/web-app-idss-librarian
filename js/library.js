@@ -61,6 +61,35 @@ function buildRows() {
   });
 }
 
+// ---------- Physical shelf order: kategorija (sort_order) -> predmet -> razred -> naslov ----------
+// Director's choice (not invented here): category order = the existing
+// seeded order (categories.sort_order); within a category, subject -> grade
+// -> title. This is the same order used on-screen (default sort below) and
+// in the "Fizicki raspored" export (reports.js), so the two always agree.
+function categorySortOrder(name) {
+  const cat = ALL_CATEGORIES.find(c => c.name === name);
+  return (cat && typeof cat.sort_order === 'number') ? cat.sort_order : 99;
+}
+
+// Natural sort for grade text ("5", "7B", "" ...): numeric prefix first,
+// blanks sort last so ungraded items don't scatter through the middle.
+function gradeSortKey(grade) {
+  if (!grade) return [1, Number.MAX_SAFE_INTEGER, ''];
+  const m = String(grade).match(/^(\d+)/);
+  return m ? [0, parseInt(m[1], 10), grade] : [0, Number.MAX_SAFE_INTEGER - 1, grade];
+}
+
+function comparePhysicalOrder(rowA, rowB) {
+  const catDiff = categorySortOrder(rowA.book.category) - categorySortOrder(rowB.book.category);
+  if (catDiff) return catDiff;
+  const subjDiff = (rowA.copy.subject || '').localeCompare(rowB.copy.subject || '');
+  if (subjDiff) return subjDiff;
+  const gA = gradeSortKey(rowA.copy.grade), gB = gradeSortKey(rowB.copy.grade);
+  if (gA[0] !== gB[0]) return gA[0] - gB[0];
+  if (gA[1] !== gB[1]) return gA[1] - gB[1];
+  return (rowA.book.title || '').localeCompare(rowB.book.title || '');
+}
+
 function applyFilters() {
   const q = IDSS.normalize(document.getElementById('search-input').value);
   const cat = document.getElementById('filter-category').value;
@@ -79,6 +108,8 @@ function applyFilters() {
       return hay.includes(q);
     });
   }
+
+  rows.sort(comparePhysicalOrder);
 
   FILTERED_ROWS = rows;
   CURRENT_PAGE = 1;
@@ -114,6 +145,8 @@ function renderTable() {
       <td>${escapeHtml(b.title || '(bez naziva)')}</td>
       <td>${escapeHtml(b.author || '—')}</td>
       <td>${escapeHtml(b.category || '—')}</td>
+      <td>${escapeHtml(c.subject || '—')}</td>
+      <td>${escapeHtml(c.grade || '—')}</td>
       <td>${escapeHtml(b.isbn || '—')}</td>
       <td>${escapeHtml(c.shelf_location || '—')}</td>
       <td>${statusBadge}</td>
