@@ -164,6 +164,7 @@ function escapeHtml(s) {
    ===================================================================== */
 
 let ADD_BOOK_STATE = {};
+let LAST_COPY_DEFAULTS = { category: '', subject: '', grade: '', shelf: '', condition: 'dobro' };
 
 function openAddBookModal() {
   ADD_BOOK_STATE = {};
@@ -180,7 +181,14 @@ function showStep(step) {
 }
 function backToEntry() { showStep('entry'); }
 
+// Continuous rapid-add loop: adding "desetine knjiga" via barcode should
+// need one tap per book, not one tap per book PLUS re-opening "Dodaj knjigu"
+// each time. Every ISBN scan (first one from the entry menu, or a repeat)
+// sets viaScan=true; after a successful save the scanner reopens on its own
+// (see saveBookAndCopies) — "Zatvori" on the scanner is what ends the loop.
 function startScanIsbn() {
+  ADD_BOOK_STATE.viaScan = true;
+  document.getElementById('add-book-modal').classList.remove('hidden');
   openScanner({
     title: 'Skeniraj ISBN',
     subtitle: 'Usmjerite kameru na barkod (EAN-13) na poledjini knjige',
@@ -190,6 +198,11 @@ function startScanIsbn() {
       await handleIsbnResult(code);
     }
   });
+}
+
+function continueScanLoop() {
+  ADD_BOOK_STATE = {};
+  startScanIsbn();
 }
 
 function startManualEntry() {
@@ -215,13 +228,74 @@ document.addEventListener('change', (e) => {
   }
 });
 
+// Cover OCR is inherently the slowest, least reliable way to add a book
+// (decorative cover typography, first-use language-model download over
+// whatever network the phone has, no timeout of its own) — it must never
+// be able to freeze the app regardless of how badly it's going. A hard
+// wall-clock timeout + a visible cancel button guarantee that; the
+// progress readout replaces the old static "Prepoznajem..." text so a
+// slow-but-working attempt doesn't look identical to a stuck one.
+// Language is deliberately 'eng' only (not 'eng+deu'): a second trained-data
+// model roughly doubles both the download and the recognition time for
+// text this app only uses as a rough guess anyway (verified afterwards
+// against a real catalog) — Latin-alphabet OCR still reads German/French/
+// Bosnian titles reasonably even without their own language model, and for
+// a bulk-add workflow speed matters more here than a few extra percent of
+// per-character accuracy.
+const OCR_TIMEOUT_MS = 25000;
+let _ocrWorker = null;
+let _ocrTimeoutId = null;
+let _ocrTimedOut = false;
+
+function setSearchingMsg(msg) {
+  const el = document.getElementById('searching-msg');
+  if (el) el.textContent = msg;
+}
+
+async function terminateOcrWorker() {
+  const w = _ocrWorker;
+  _ocrWorker = null;
+  if (w) { try { await w.terminate(); } catch (e) { /* already gone */ } }
+}
+
+function cancelSearching() {
+  clearTimeout(_ocrTimeoutId);
+  _ocrTimedOut = true;
+  terminateOcrWorker();
+  IDSS.toast('Prekinuto.', 'info');
+  backToEntry();
+}
+
 async function runCoverOcr() {
   const file = ADD_BOOK_STATE.coverFile;
   if (!file) { IDSS.toast('Izaberite fotografiju naslovnice.', 'error'); return; }
   showStep('searching');
-  document.getElementById('searching-msg').textContent = 'Prepoznajem tekst sa naslovnice...';
+  document.getElementById('searching-cancel-btn').classList.remove('hidden');
+  setSearchingMsg('Pokrecem prepoznavanje teksta...');
+
+  _ocrTimedOut = false;
+  clearTimeout(_ocrTimeoutId);
+  _ocrTimeoutId = setTimeout(async () => {
+    _ocrTimedOut = true;
+    await terminateOcrWorker();
+    IDSS.toast(`Prepoznavanje je predugo trajalo (${OCR_TIMEOUT_MS / 1000}s) i prekinuto je — unesite podatke rucno ili skenirajte ISBN.`, 'error');
+    startManualEntry();
+  }, OCR_TIMEOUT_MS);
+
   try {
-    const result = await Tesseract.recognize(file, 'eng+deu', {});
+    _ocrWorker = await Tesseract.createWorker('eng', 1, {
+      logger: (m) => {
+        if (_ocrTimedOut) return;
+        if (m.status === 'recognizing text') setSearchingMsg(`Prepoznajem tekst... ${Math.round((m.progress || 0) * 100)}%`);
+        else if (m.status === 'loading language traineddata') setSearchingMsg('Preuzimam OCR podatke (prvi put je sporije)...');
+        else if (m.status) setSearchingMsg(m.status.charAt(0).toUpperCase() + m.status.slice(1) + '...');
+      }
+    });
+    const result = await _ocrWorker.recognize(file);
+    if (_ocrTimedOut) return; // timeout already handled this attempt
+    clearTimeout(_ocrTimeoutId);
+    await terminateOcrWorker();
+
     const text = (result.data && result.data.text || '').trim();
     const guess = guessTitleAuthor(text);
     if (!guess.title) {
@@ -229,7 +303,7 @@ async function runCoverOcr() {
       startManualEntry();
       return;
     }
-    document.getElementById('searching-msg').textContent = 'Trazim po prepoznatom naslovu...';
+    setSearchingMsg('Trazim po prepoznatom naslovu...');
     // Try Google Books text search by guessed title/author
     const q = encodeURIComponent(`${guess.title} ${guess.author || ''}`.trim());
     const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}`);
@@ -257,9 +331,14 @@ async function runCoverOcr() {
       showConfirmFound(false);
     }
   } catch (e) {
+    if (_ocrTimedOut) return;
+    clearTimeout(_ocrTimeoutId);
+    await terminateOcrWorker();
     console.error(e);
     IDSS.toast('Prepoznavanje naslovnice nije uspjelo. Unesite rucno.', 'error');
     startManualEntry();
+  } finally {
+    document.getElementById('searching-cancel-btn').classList.add('hidden');
   }
 }
 
@@ -317,12 +396,16 @@ function proceedToDetails(forceAddCopy) {
   document.getElementById('manual-fields-wrap').innerHTML = '';
   document.getElementById('details-book-summary').textContent = `${b.title || ''} ${b.author ? '· ' + b.author : ''}`;
 
-  // populate category select
+  // populate category select — prefilled from the last-saved copy so a
+  // back-to-back batch (e.g. 30 German-class textbooks for the same shelf)
+  // doesn't need the same fields retyped every single time.
   const catSel = document.getElementById('copy-category');
   catSel.innerHTML = ALL_CATEGORIES.filter(c => c.active !== false).map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-  document.getElementById('copy-subject').value = '';
-  document.getElementById('copy-grade').value = '';
-  document.getElementById('copy-shelf').value = '';
+  if (LAST_COPY_DEFAULTS.category) catSel.value = LAST_COPY_DEFAULTS.category;
+  document.getElementById('copy-subject').value = LAST_COPY_DEFAULTS.subject;
+  document.getElementById('copy-grade').value = LAST_COPY_DEFAULTS.grade;
+  document.getElementById('copy-shelf').value = LAST_COPY_DEFAULTS.shelf;
+  document.getElementById('copy-condition').value = LAST_COPY_DEFAULTS.condition;
   document.getElementById('copy-quantity').value = 1;
   document.getElementById('copy-notes').value = '';
   showStep('details');
@@ -411,8 +494,19 @@ async function saveBookAndCopies() {
 
     ALL_COPIES = ALL_COPIES.concat(newCopies);
     applyFilters();
-    closeAddBookModal();
-    IDSS.toast(`Knjiga dodana (${qty} primjerak${qty > 1 ? 'a' : ''}).`, 'success');
+    LAST_COPY_DEFAULTS = { category: document.getElementById('copy-category').value, subject, grade, shelf, condition };
+
+    if (ADD_BOOK_STATE.viaScan) {
+      // Rapid-add loop: hide the details form and jump straight back into
+      // the barcode scanner for the next book. "Zatvori" on the scanner
+      // (or the "X primjeraka" toast alone, if they walk away) ends it.
+      document.getElementById('add-book-modal').classList.add('hidden');
+      IDSS.toast(`Dodano: ${ADD_BOOK_STATE.book && ADD_BOOK_STATE.book.title || 'knjiga'} (${qty} primjerak${qty > 1 ? 'a' : ''}). Skeniraj sljedecu...`, 'success');
+      setTimeout(continueScanLoop, 450);
+    } else {
+      closeAddBookModal();
+      IDSS.toast(`Knjiga dodana (${qty} primjerak${qty > 1 ? 'a' : ''}).`, 'success');
+    }
   } catch (e) {
     console.error(e);
     IDSS.toast('Greska pri cuvanju knjige.', 'error');

@@ -73,10 +73,12 @@
         <button class="btn-action" onclick="startScanIsbn()">
           <div class="aicon" style="background: linear-gradient(135deg,var(--idss-blue),var(--idss-blue-light));"><i class="fa-solid fa-barcode"></i></div>
           <span class="label">Skeniraj ISBN</span>
+          <small>Najbrze i najpouzdanije — preporuceno za vise knjiga zaredom</small>
         </button>
         <button class="btn-action" onclick="startScanCover()">
           <div class="aicon" style="background: linear-gradient(135deg,var(--idss-yellow),#ffb703); color:#2b2205;"><i class="fa-solid fa-camera"></i></div>
           <span class="label">Skeniraj naslovnicu</span>
+          <small>Sporije i manje pouzdano — samo ako nema barkoda</small>
         </button>
         <button class="btn-action" onclick="startManualEntry()">
           <div class="aicon" style="background: linear-gradient(135deg,#5b6b7a,#8494a3);"><i class="fa-solid fa-pen"></i></div>
@@ -89,6 +91,7 @@
     <div id="add-book-step-searching" class="hidden text-center" style="padding:30px 0;">
       <div class="spinner" style="margin: 0 auto 16px;"></div>
       <p id="searching-msg" class="font-bold">Trazim informacije o knjizi...</p>
+      <button id="searching-cancel-btn" class="btn btn-neutral hidden mt-16" onclick="cancelSearching()">Prekini</button>
     </div>
 
     <div id="add-book-step-cover" class="hidden">
