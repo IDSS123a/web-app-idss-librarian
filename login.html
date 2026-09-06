@@ -46,6 +46,7 @@
     </div>
     <button class="btn btn-primary btn-block" id="signin-btn" onclick="doSignIn()"><i class="fa-solid fa-right-to-bracket"></i> Prijavi se</button>
     <div class="login-toggle"><a onclick="showSignupForm()">Prvi put? Postavite lozinku za svoj nalog</a></div>
+    <div class="login-toggle"><a onclick="showForgotForm()">Zaboravili ste lozinku?</a></div>
   </div>
 
   <div id="signup-form" class="login-form hidden">
@@ -64,6 +65,29 @@
     </div>
     <button class="btn btn-primary btn-block" id="signup-btn" onclick="doSignUp()"><i class="fa-solid fa-key"></i> Postavi lozinku</button>
     <div class="login-toggle"><a onclick="showSigninForm()">Nazad na prijavu</a></div>
+  </div>
+
+  <div id="forgot-form" class="login-form hidden">
+    <p class="sub" style="margin:0 0 16px;">Unesite svoj email — poslacemo link za postavljanje nove lozinke.</p>
+    <div class="field">
+      <label>Email</label>
+      <input class="input" id="fg-email" type="email" placeholder="ime.prezime@idss.ba" autocomplete="username">
+    </div>
+    <button class="btn btn-primary btn-block" id="forgot-btn" onclick="doForgotPassword()"><i class="fa-solid fa-paper-plane"></i> Posalji link za reset</button>
+    <div class="login-toggle"><a onclick="showSigninForm()">Nazad na prijavu</a></div>
+  </div>
+
+  <div id="reset-form" class="login-form hidden">
+    <p class="sub" style="margin:0 0 16px;">Postavite novu lozinku za svoj nalog.</p>
+    <div class="field">
+      <label>Nova lozinka</label>
+      <input class="input" id="rp-password" type="password" placeholder="najmanje 8 znakova" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label>Potvrdite lozinku</label>
+      <input class="input" id="rp-password2" type="password" placeholder="ponovite lozinku" autocomplete="new-password">
+    </div>
+    <button class="btn btn-primary btn-block" id="reset-btn" onclick="doResetPassword()"><i class="fa-solid fa-key"></i> Sacuvaj novu lozinku</button>
   </div>
 
   <div class="notice-box">
@@ -95,8 +119,18 @@ function showSignupForm() {
 }
 function showSigninForm() {
   clearMsg();
-  document.getElementById('signup-form').classList.add('hidden');
+  ['signup-form', 'forgot-form', 'reset-form'].forEach(id => document.getElementById(id).classList.add('hidden'));
   document.getElementById('signin-form').classList.remove('hidden');
+}
+function showForgotForm() {
+  clearMsg();
+  document.getElementById('signin-form').classList.add('hidden');
+  document.getElementById('forgot-form').classList.remove('hidden');
+}
+function showResetForm() {
+  clearMsg();
+  ['signin-form', 'signup-form', 'forgot-form'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('reset-form').classList.remove('hidden');
 }
 
 // Common auth-error text, translated where it's a predictable Supabase message.
@@ -106,6 +140,8 @@ function mapAuthError(error) {
   if (/email not confirmed/i.test(msg)) return 'Email nije potvrdjen. Provjerite postovsko sanduce za link za potvrdu.';
   if (/user already registered/i.test(msg)) return 'Ovaj email vec ima postavljenu lozinku. Koristite obrazac za prijavu.';
   if (/password should be at least/i.test(msg)) return 'Lozinka je prekratka (najmanje 8 znakova).';
+  if (/rate limit|429/i.test(msg)) return 'Previse pokusaja u kratkom vremenu. Sacekajte malo pa pokusajte ponovo.';
+  if (/same password/i.test(msg)) return 'Nova lozinka mora biti razlicita od trenutne.';
   return msg;
 }
 
@@ -173,11 +209,60 @@ async function doSignUp() {
   }
 }
 
-// If already signed in with a valid linked staff profile, skip straight past login.
-(async function () {
-  const staff = await IDSS.initAuthSession();
-  if (staff) window.location.href = 'index.html';
-})();
+async function doForgotPassword() {
+  clearMsg();
+  const email = document.getElementById('fg-email').value.trim();
+  if (!email) { showMsg('Unesite email.', 'error'); return; }
+  const btn = document.getElementById('forgot-btn');
+  btn.disabled = true;
+  try {
+    const { error } = await IDSS.getAuthClient().auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/login.html'
+    });
+    if (error) { showMsg(mapAuthError(error), 'error'); return; }
+    showSigninForm();
+    showMsg(`Ako nalog sa emailom ${email} postoji, poslat je link za reset lozinke. Provjerite postansko sanduce (i spam folder).`, 'info');
+  } catch (e) {
+    showMsg(mapAuthError(e), 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function doResetPassword() {
+  clearMsg();
+  const pw1 = document.getElementById('rp-password').value;
+  const pw2 = document.getElementById('rp-password2').value;
+  if (pw1.length < 8) { showMsg('Lozinka mora imati najmanje 8 znakova.', 'error'); return; }
+  if (pw1 !== pw2) { showMsg('Lozinke se ne poklapaju.', 'error'); return; }
+  const btn = document.getElementById('reset-btn');
+  btn.disabled = true;
+  try {
+    const { error } = await IDSS.getAuthClient().auth.updateUser({ password: pw1 });
+    if (error) { showMsg(mapAuthError(error), 'error'); return; }
+    await afterAuthSuccess();
+  } catch (e) {
+    showMsg(mapAuthError(e), 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// A password-recovery link redirects back here with #...&type=recovery in the
+// URL -- Supabase turns that into a real (temporary-purpose) session. Detect
+// it up front so we show the "set new password" form instead of silently
+// treating it as a normal login and bouncing straight to index.html.
+const isPasswordRecovery = /type=recovery/.test(window.location.hash);
+if (isPasswordRecovery) {
+  showResetForm();
+  IDSS.getAuthClient().auth.getSession(); // let supabase-js parse the recovery token from the URL
+} else {
+  // If already signed in with a valid linked staff profile, skip straight past login.
+  (async function () {
+    const staff = await IDSS.initAuthSession();
+    if (staff) window.location.href = 'index.html';
+  })();
+}
 </script>
 </body>
 </html>
