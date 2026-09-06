@@ -440,6 +440,7 @@ function proceedToDetails(forceAddCopy) {
   document.getElementById('copy-shelf').value = LAST_COPY_DEFAULTS.shelf;
   document.getElementById('copy-condition').value = LAST_COPY_DEFAULTS.condition;
   document.getElementById('copy-quantity').value = 1;
+  document.getElementById('copy-price').value = '';
   document.getElementById('copy-notes').value = '';
   showStep('details');
 }
@@ -465,6 +466,7 @@ function renderManualFields(prefill) {
   document.getElementById('copy-grade').value = '';
   document.getElementById('copy-shelf').value = '';
   document.getElementById('copy-quantity').value = 1;
+  document.getElementById('copy-price').value = '';
   document.getElementById('copy-notes').value = '';
 }
 
@@ -494,6 +496,27 @@ async function saveBookAndCopies() {
       } else {
         bookData = Object.assign({ isbn: ADD_BOOK_STATE.isbn }, ADD_BOOK_STATE.book);
       }
+
+      // Final safety-net duplicate check — covers every path that can reach
+      // this point (manual entry, ISBN-not-found-in-any-catalog, etc.), not
+      // just the scan-ISBN happy path that proceedToDetails() already checks
+      // earlier. A librarian must never be able to silently create a second
+      // book record for an ISBN that's already in the library.
+      const dupIsbn = (bookData.isbn || '').trim();
+      if (dupIsbn) {
+        const dup = ALL_BOOKS.find(b => b.isbn && cleanIsbn(b.isbn) === cleanIsbn(dupIsbn));
+        if (dup) {
+          btn.disabled = false;
+          IDSS.hideLoading();
+          ADD_BOOK_STATE.existingBookId = dup.id;
+          const copiesCount = ALL_COPIES.filter(c => c.book_id === dup.id).length;
+          document.getElementById('duplicate-info').textContent = `"${dup.title}" vec postoji sa ${copiesCount} primjerak(a) u biblioteci (ISBN ${dupIsbn}).`;
+          showStep('duplicate');
+          IDSS.toast('Ova knjiga vec postoji u biblioteci — provjerite prije dodavanja.', 'error');
+          return;
+        }
+      }
+
       bookData.category = document.getElementById('copy-category').value;
       const session = IDSS.getSession();
       const created = await IDSS.apiCreate('books', Object.assign({ id: IDSS.uid('book-') }, bookData, { created_by: session.full_name }));
@@ -508,6 +531,8 @@ async function saveBookAndCopies() {
     const shelf = document.getElementById('copy-shelf').value.trim();
     const condition = document.getElementById('copy-condition').value;
     const notes = document.getElementById('copy-notes').value.trim();
+    const priceRaw = document.getElementById('copy-price').value;
+    const price = priceRaw !== '' ? parseFloat(priceRaw) : null;
 
     const settings = await getSettingsCached();
     let seq = settings.next_inventory_seq || 1;
@@ -518,7 +543,7 @@ async function saveBookAndCopies() {
       const copy = await IDSS.apiCreate('book_copies', {
         id: IDSS.uid('copy-'), book_id: bookId, inventory_number: invNumber,
         subject, grade, shelf_location: shelf, condition, status: 'available',
-        notes, added_date: new Date().toISOString()
+        notes, added_date: new Date().toISOString(), purchase_price: price
       });
       newCopies.push(copy);
       await IDSS.logAudit('copy_added', 'book_copy', copy.id, { inventory_number: invNumber, book_id: bookId });
@@ -594,12 +619,13 @@ async function openBookDetail(bookId) {
     </div>
     <div class="table-wrap mt-8">
       <table class="data-table">
-        <thead><tr><th>Inv. broj</th><th>Polica</th><th>Stanje</th><th>Status</th><th>Trenutni korisnik</th><th>Akcije</th></tr></thead>
+        <thead><tr><th>Inv. broj</th><th>Polica</th><th>Stanje</th><th>Cijena</th><th>Status</th><th>Trenutni korisnik</th><th>Akcije</th></tr></thead>
         <tbody>
           ${copies.map(c => `<tr>
             <td class="font-bold">${c.inventory_number}</td>
             <td>${escapeHtml(c.shelf_location || '—')}</td>
             <td>${escapeHtml(c.condition || '—')}</td>
+            <td>${c.purchase_price != null ? Number(c.purchase_price).toFixed(2) + ' EUR' : '—'}</td>
             <td>${renderStatusBadge(c.status, c.due_date)}</td>
             <td>${c.status === 'borrowed' ? escapeHtml(c.borrower_name || '—') : '—'}</td>
             <td>

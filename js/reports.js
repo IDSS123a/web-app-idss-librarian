@@ -61,7 +61,7 @@ async function runReport(key) {
           return {
             'Red. br.': i + 1, 'Kategorija': b.category || '', 'Predmet': c.subject || '', 'Razred': c.grade || '',
             'Naslov': b.title || '', 'Autor': b.author || '', 'Inventarni broj': c.inventory_number,
-            'Trenutna polica (upisana)': c.shelf_location || '', 'Status': c.status
+            'Trenutna polica (upisana)': c.shelf_location || '', 'Cijena (EUR)': c.purchase_price != null ? c.purchase_price : '', 'Status': c.status
           };
         });
         sheetName = 'Fizicki_raspored'; filename = 'IDSS_Library_Physical_Layout'; break;
@@ -131,7 +131,7 @@ function invRow(c, b) {
   return {
     'Inventarni broj': c.inventory_number, 'ISBN': b.isbn || '', 'Naslov': b.title || '', 'Autor': b.author || '',
     'Kategorija': b.category || '', 'Jezik': b.language || '', 'Izdavac': b.publisher || '', 'Godina': b.publication_year || '',
-    'Polica': c.shelf_location || '', 'Status': c.status, 'Zaduzio': c.borrower_name || '',
+    'Polica': c.shelf_location || '', 'Cijena (EUR)': c.purchase_price != null ? c.purchase_price : '', 'Status': c.status, 'Zaduzio': c.borrower_name || '',
     'Datum zaduzenja': c.borrowed_date ? IDSS.fmtDate(c.borrowed_date) : '', 'Rok povrata': c.due_date ? IDSS.fmtDate(c.due_date) : ''
   };
 }

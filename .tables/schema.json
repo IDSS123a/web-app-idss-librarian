@@ -218,6 +218,11 @@
         "name": "current_borrowing_id",
         "type": "text",
         "description": "FK -> borrowings.id of the active loan, if any"
+      },
+      {
+        "name": "purchase_price",
+        "type": "number",
+        "description": "Purchase price of this copy (EUR), optional — from an invoice/delivery note when known"
       }
     ]
   },
