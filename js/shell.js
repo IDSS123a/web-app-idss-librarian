@@ -49,6 +49,7 @@ async function renderShell(activeKey) {
           <div class="u-role">${roleLabel(session.role)}</div>
         </div>
         <button class="icon-btn" onclick="IDSS.toggleTheme()" title="Tema"><i class="fa-solid fa-circle-half-stroke"></i></button>
+        <button class="icon-btn" onclick="changePasswordPrompt()" title="Promijeni lozinku"><i class="fa-solid fa-key"></i></button>
         <button class="icon-btn" onclick="doLogout()" title="Odjava"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
       </div>
     </aside>`;
@@ -95,6 +96,24 @@ async function renderShell(activeKey) {
 
 function roleLabel(role) {
   return { admin: 'Administrator', librarian: 'Bibliotekar', viewer: 'Pregled', teacher: 'Nastavnik' }[role] || role;
+}
+
+async function changePasswordPrompt() {
+  const pw1 = prompt('Nova lozinka (najmanje 8 znakova):');
+  if (!pw1) return;
+  if (pw1.length < 8) { IDSS.toast('Lozinka mora imati najmanje 8 znakova.', 'error'); return; }
+  const pw2 = prompt('Ponovite novu lozinku:');
+  if (pw1 !== pw2) { IDSS.toast('Lozinke se ne poklapaju.', 'error'); return; }
+  IDSS.showLoading('Cuvanje lozinke...');
+  try {
+    const { error } = await IDSS.getAuthClient().auth.updateUser({ password: pw1 });
+    if (error) throw error;
+    IDSS.toast('Lozinka je promijenjena.', 'success');
+  } catch (e) {
+    IDSS.toast('Greska pri promjeni lozinke: ' + (e.message || e), 'error');
+  } finally {
+    IDSS.hideLoading();
+  }
 }
 
 async function doLogout() {
