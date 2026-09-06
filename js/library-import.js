@@ -211,6 +211,22 @@ async function parsePdfInvoiceFile(file) {
     });
     i = j;
   }
+
+  // Not every library PDF is a Buchingen-style Rechnung/Lieferschein — a
+  // plain tabular list (naslov/isbn/autor/... columns, like the .xlsx
+  // template) can also arrive as a PDF export. If the invoice-specific
+  // parser above found nothing, fall back to the generic column-position
+  // table parser shared with the students/staff importers.
+  if (results.length === 0) {
+    const genericRows = await IDSS.parsePdfTable(file, LIB_HEADER_ALIASES);
+    return genericRows.map(r => ({
+      title: (r.title || '').trim(), author: (r.author || '').trim(), isbn: cleanIsbn(r.isbn || ''),
+      publisher: (r.publisher || '').trim(), year: parseLooseInt(r.year), category: (r.category || '').trim(),
+      subject: (r.subject || '').trim(), grade: (r.grade || '').trim(), qty: parseLooseInt(r.qty) || 0,
+      price: parseLoosePrice(r.price), sourceRef: r._rowRef
+    })).filter(r => r.title);
+  }
+
   return results;
 }
 

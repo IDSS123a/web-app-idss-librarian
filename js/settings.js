@@ -100,9 +100,13 @@ async function addCategoryPrompt() {
   IDSS.toast('Kategorija dodana.', 'success');
 }
 
+let ALL_STAFF = [];
 async function loadStaffAdmin() {
-  const staff = await IDSS.apiListAll('staff');
-  document.getElementById('staff-list-admin').innerHTML = staff.map(s => `
+  ALL_STAFF = await IDSS.apiListAll('staff');
+  renderStaffListAdmin();
+}
+function renderStaffListAdmin() {
+  document.getElementById('staff-list-admin').innerHTML = ALL_STAFF.map(s => `
     <div class="flex items-center justify-between" style="padding:8px 0; border-bottom:1px solid var(--border-soft);">
       <div><strong>${s.full_name}</strong> <span class="text-muted text-sm">(${({admin:'Administrator',librarian:'Bibliotekar',viewer:'Pregled'})[s.role] || s.role})</span></div>
       <span class="badge ${s.active === false ? 'badge-lost' : 'badge-available'}">${s.active === false ? 'Neaktivan' : 'Aktivan'}</span>

@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="css/style.css">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 </head>
 <body>
 <div id="shell-topbar-slot"></div>
@@ -82,12 +83,12 @@
 <div id="import-modal" class="modal-backdrop hidden">
   <div class="modal-box wide">
     <div id="import-step-upload">
-      <h3>Uvezi spisak ucenika (.xlsx)</h3>
-      <p class="sub">Preuzmite predlozak, popunite ga i uploadujte. Sifra ucenika je jedinstveni kljuc za azuriranje.</p>
+      <h3>Uvezi spisak ucenika (.xlsx ili .pdf)</h3>
+      <p class="sub">Preuzmite predlozak, popunite ga i uploadujte, ili uvezite postojeci spisak u .pdf formatu. Sifra ucenika je jedinstveni kljuc za azuriranje.</p>
       <button class="btn btn-neutral mb-0" onclick="downloadImportTemplate()"><i class="fa-solid fa-download"></i> Preuzmi predlozak (.xlsx)</button>
       <div class="field mt-16">
-        <label>Fajl (.xlsx)</label>
-        <input type="file" accept=".xlsx" class="input" id="import-file-input">
+        <label>Fajl (.xlsx ili .pdf)</label>
+        <input type="file" accept=".xlsx,.pdf" class="input" id="import-file-input">
       </div>
       <div id="import-upload-error" class="hidden" style="color:var(--idss-red); font-weight:600; font-size:13.5px; margin-top:6px;"></div>
       <div class="modal-actions">

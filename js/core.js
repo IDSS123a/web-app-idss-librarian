@@ -213,12 +213,101 @@ const IDSS = (() => {
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip diacritics
       .trim();
   }
+  function normToken(str) { return normalize(str).replace(/[^\w]/g, ''); }
+
+  /* ============================================================
+     Generic tabular PDF import (shared by all three bulk-import
+     features: library items, students, staff).
+     Requires pdfjsLib to be loaded on the page (pdf.js from CDN) and its
+     GlobalWorkerOptions.workerSrc set \u2014 pages that use this call
+     ensurePdfWorker() first.
+
+     Strategy: pdf.js gives every text run its own x/y position (no line
+     or column grouping). We group runs into lines by y, then find the
+     header row by matching each run's text against the same alias lists
+     already used for the .xlsx import of that data \u2014 whichever row has
+     the most alias matches wins. That row's x positions become column
+     boundaries; every row below is split into columns by nearest x, so
+     it works for any table layout without hardcoding one document's
+     format. This is inherently less reliable than .xlsx (no cell
+     structure to read, just visual position), so callers must still run
+     it through the same validate/dedupe/preview pipeline as any other
+     import source \u2014 never trust it blindly.
+     ============================================================ */
+  function ensurePdfWorker() {
+    if (typeof pdfjsLib !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    }
+  }
+
+  async function pdfExtractPositionedLines(file) {
+    ensurePdfWorker();
+    const data = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data }).promise;
+    let lines = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      const byY = new Map();
+      content.items.forEach(item => {
+        if (!item.str || !item.str.trim()) return;
+        const y = Math.round(item.transform[5]);
+        if (!byY.has(y)) byY.set(y, []);
+        byY.get(y).push({ str: item.str.trim(), x: item.transform[4] });
+      });
+      const pageLines = Array.from(byY.entries())
+        .sort((a, b) => b[0] - a[0])
+        .map(([, items]) => items.sort((a, b) => a.x - b.x));
+      lines = lines.concat(pageLines);
+    }
+    return lines; // array of lines, each an array of {str, x} left-to-right
+  }
+
+  // aliasMap: { fieldName: ['alias one', 'alias two', ...] }
+  // Returns array of row objects keyed by fieldName, plus _rowRef for messages.
+  async function parsePdfTable(file, aliasMap) {
+    const lines = await pdfExtractPositionedLines(file);
+    const fieldFor = (tok) => {
+      for (const [field, aliases] of Object.entries(aliasMap)) {
+        if (aliases.some(a => normToken(a) === tok)) return field;
+      }
+      return null;
+    };
+
+    let headerLineIdx = -1, headerCols = null;
+    lines.forEach((line, i) => {
+      if (headerLineIdx !== -1) return;
+      const matches = [];
+      line.forEach(item => {
+        const field = fieldFor(normToken(item.str));
+        if (field && !matches.some(m => m.field === field)) matches.push({ field, x: item.x });
+      });
+      if (matches.length >= 2) { headerLineIdx = i; headerCols = matches.sort((a, b) => a.x - b.x); }
+    });
+    if (headerLineIdx === -1) return [];
+
+    const rows = [];
+    for (let i = headerLineIdx + 1; i < lines.length; i++) {
+      const rowObj = {};
+      let any = false;
+      lines[i].forEach(item => {
+        // the item belongs to the last header column whose x it's at or past
+        let best = headerCols[0];
+        for (const col of headerCols) { if (item.x + 8 >= col.x) best = col; else break; }
+        rowObj[best.field] = ((rowObj[best.field] || '') + ' ' + item.str).trim();
+        any = true;
+      });
+      if (any) { rowObj._rowRef = `PDF red ${i - headerLineIdx}`; rows.push(rowObj); }
+    }
+    return rows;
+  }
 
   return {
     apiList, apiListAll, apiGet, apiCreate, apiUpdate, apiDelete,
     uid, getSession, setSession, clearSession, requireSession, hasRole,
     toast, showLoading, hideLoading, logAudit,
     fmtDate, fmtDateTime, daysBetween, addDays, isOverdue,
-    initTheme, toggleTheme, normalize
+    initTheme, toggleTheme, normalize, normToken,
+    ensurePdfWorker, parsePdfTable
   };
 })();

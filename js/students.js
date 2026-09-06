@@ -260,52 +260,75 @@ async function processImportFile() {
   const errBox = document.getElementById('import-upload-error');
   errBox.classList.add('hidden');
   const file = fileInput.files[0];
-  if (!file) { showImportError('Molimo izaberite .xlsx fajl.'); return; }
-  if (!file.name.toLowerCase().endsWith('.xlsx')) { showImportError('Molimo uploadujte .xlsx fajl.'); return; }
+  if (!file) { showImportError('Molimo izaberite .xlsx ili .pdf fajl.'); return; }
+  const name = file.name.toLowerCase();
+  if (!name.endsWith('.xlsx') && !name.endsWith('.pdf')) { showImportError('Podrzani formati su .xlsx i .pdf.'); return; }
 
   showImportStep('processing');
   try {
-    const data = await file.arrayBuffer();
-    const wb = XLSX.read(data, { type: 'array' });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-
-    if (!rows || rows.length === 0) { showImportStep('upload'); showImportError('Fajl ne sadrzi nijedan red podataka.'); return; }
-
-    // Map headers -> canonical fields
-    const sampleRow = rows[0];
-    const headerMap = {}; // originalHeader -> field
-    Object.keys(sampleRow).forEach(h => {
-      const field = matchHeaderToField(h);
-      if (field) headerMap[h] = field;
-    });
-    const mappedFields = new Set(Object.values(headerMap));
-    const missing = REQUIRED_COLS.filter(f => !mappedFields.has(f));
-    if (missing.length > 0) {
-      const bsNames = { student_id: 'Sifra ucenika', first_name: 'Ime', last_name: 'Prezime', class_name: 'Razred' };
-      showImportStep('upload');
-      showImportError(`Fajl ne sadrzi obavezne kolone: ${missing.map(m => bsNames[m]).join(', ')}.`);
-      return;
+    let normRows;
+    if (name.endsWith('.xlsx')) {
+      normRows = await parseStudentsXlsx(file);
+    } else {
+      normRows = await parseStudentsPdf(file);
     }
-
-    // Build normalized row objects
-    const normRows = rows.map((r, idx) => {
-      const obj = { _rowNum: idx + 2 }; // +2: header is row1, data starts row2
-      Object.entries(headerMap).forEach(([origHeader, field]) => { obj[field] = (r[origHeader] ?? '').toString().trim(); });
-      return obj;
-    }).filter(r => {
-      // exclude completely empty rows
-      return REQUIRED_COLS.some(f => (r[f] || '').toString().trim() !== '') || (r.email || '').trim() !== '';
-    });
-
+    if (normRows === null) return; // error already shown by the parser
     if (normRows.length === 0) { showImportStep('upload'); showImportError('Fajl ne sadrzi nijedan red podataka.'); return; }
-
     buildImportPreview(normRows);
   } catch (e) {
     console.error(e);
     showImportStep('upload');
-    showImportError('Fajl se nije mogao obraditi. Provjerite da je u ispravnom .xlsx formatu.');
+    showImportError('Fajl se nije mogao obraditi: ' + (e.message || e));
   }
+}
+
+// Returns normalized rows ({_rowNum, student_id, first_name, last_name, class_name, email, active}),
+// or null after showing its own error (missing required columns).
+async function parseStudentsXlsx(file) {
+  const data = await file.arrayBuffer();
+  const wb = XLSX.read(data, { type: 'array' });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  if (!rows || rows.length === 0) return [];
+
+  const sampleRow = rows[0];
+  const headerMap = {};
+  Object.keys(sampleRow).forEach(h => {
+    const field = matchHeaderToField(h);
+    if (field) headerMap[h] = field;
+  });
+  const mappedFields = new Set(Object.values(headerMap));
+  const missing = REQUIRED_COLS.filter(f => !mappedFields.has(f));
+  if (missing.length > 0) {
+    const bsNames = { student_id: 'Sifra ucenika', first_name: 'Ime', last_name: 'Prezime', class_name: 'Razred' };
+    showImportStep('upload');
+    showImportError(`Fajl ne sadrzi obavezne kolone: ${missing.map(m => bsNames[m]).join(', ')}.`);
+    return null;
+  }
+
+  return rows.map((r, idx) => {
+    const obj = { _rowNum: idx + 2 }; // +2: header is row1, data starts row2
+    Object.entries(headerMap).forEach(([origHeader, field]) => { obj[field] = (r[origHeader] ?? '').toString().trim(); });
+    return obj;
+  }).filter(r => REQUIRED_COLS.some(f => (r[f] || '').toString().trim() !== '') || (r.email || '').trim() !== '');
+}
+
+async function parseStudentsPdf(file) {
+  const rows = await IDSS.parsePdfTable(file, HEADER_ALIASES);
+  if (rows.length === 0) {
+    showImportStep('upload');
+    showImportError('Nije prepoznata tabela sa kolonama ucenika (sifra/ime/prezime/razred) u PDF-u. PDF uvoz zahtijeva jasnu tabelu sa zaglavljem — provjerite fajl ili koristite .xlsx.');
+    return null;
+  }
+  return rows.map((r, idx) => ({
+    _rowNum: idx + 1,
+    student_id: (r.student_id || '').trim(),
+    first_name: (r.first_name || '').trim(),
+    last_name: (r.last_name || '').trim(),
+    class_name: (r.class_name || '').trim(),
+    email: (r.email || '').trim(),
+    active: (r.active || '').trim()
+  })).filter(r => r.student_id || r.first_name || r.last_name);
 }
 
 function showImportError(msg) {
