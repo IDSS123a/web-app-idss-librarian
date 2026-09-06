@@ -190,6 +190,53 @@
   <div class="modal-box wide" id="book-detail-content"></div>
 </div>
 
+<!-- ============== EDIT BOOK (bibliographic) MODAL ============== -->
+<div id="edit-book-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <h3>Uredi podatke o knjizi</h3>
+    <input type="hidden" id="eb-id">
+    <div class="form-grid">
+      <div class="field"><label>Naslov *</label><input class="input" id="eb-title"></div>
+      <div class="field"><label>Podnaslov</label><input class="input" id="eb-subtitle"></div>
+      <div class="field"><label>Autor</label><input class="input" id="eb-author"></div>
+      <div class="field"><label>ISBN</label><input class="input" id="eb-isbn"></div>
+      <div class="field"><label>Izdavac</label><input class="input" id="eb-publisher"></div>
+      <div class="field"><label>Godina izdanja</label><input class="input" type="number" id="eb-year"></div>
+      <div class="field"><label>Jezik</label><input class="input" id="eb-language"></div>
+      <div class="field"><label>Kategorija</label><select class="input" id="eb-category"></select></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-neutral" onclick="closeEditBookModal()">Otkazi</button>
+      <button class="btn btn-primary" onclick="saveEditBook()"><i class="fa-solid fa-check"></i> Sacuvaj</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== EDIT COPY MODAL ============== -->
+<div id="edit-copy-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <h3>Uredi primjerak</h3>
+    <input type="hidden" id="ec-id">
+    <div class="form-grid">
+      <div class="field"><label>Skolski predmet</label><input class="input" id="ec-subject"></div>
+      <div class="field"><label>Razred</label><input class="input" id="ec-grade"></div>
+      <div class="field"><label>Polica/Lokacija</label><input class="input" id="ec-shelf"></div>
+      <div class="field"><label>Cijena, EUR</label><input class="input" type="number" step="0.01" min="0" id="ec-price"></div>
+      <div class="field"><label>Stanje</label>
+        <select class="input" id="ec-condition">
+          <option value="novo">Novo</option><option value="dobro">Dobro</option>
+          <option value="osteceno">Osteceno</option><option value="lose">Lose</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Napomena</label><input class="input" id="ec-notes"></div>
+    <div class="modal-actions">
+      <button class="btn btn-neutral" onclick="closeEditCopyModal()">Otkazi</button>
+      <button class="btn btn-primary" onclick="saveEditCopy()"><i class="fa-solid fa-check"></i> Sacuvaj</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============== BULK LIBRARY IMPORT MODAL (.xlsx / .pdf) ============== -->
 <div id="lib-import-modal" class="modal-backdrop hidden">
   <div class="modal-box wide">

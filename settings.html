@@ -38,7 +38,10 @@
     <div class="card mt-24" style="max-width:640px;">
       <div class="flex items-center justify-between">
         <h3 style="margin:0;">Nalozi osoblja</h3>
-        <button class="btn btn-sm btn-neutral" onclick="openStaffImportModal()"><i class="fa-solid fa-file-arrow-up"></i> Uvezi osoblje (.xlsx/.pdf)</button>
+        <div class="flex gap-8">
+          <button class="btn btn-sm btn-primary" onclick="openAddStaffAdminModal()"><i class="fa-solid fa-plus"></i> Novi nalog</button>
+          <button class="btn btn-sm btn-neutral" onclick="openStaffImportModal()"><i class="fa-solid fa-file-arrow-up"></i> Uvezi osoblje (.xlsx/.pdf)</button>
+        </div>
       </div>
       <div id="staff-list-admin" class="mt-16"></div>
     </div>
@@ -56,6 +59,50 @@
   </main>
 </div>
 <div id="shell-bottomnav-slot"></div>
+
+<!-- ============== STAFF ADD/EDIT MODAL (manual) ============== -->
+<div id="staff-admin-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <h3 id="staff-admin-modal-title">Novi nalog</h3>
+    <input type="hidden" id="sa-edit-id">
+    <div class="field">
+      <label>Ime i prezime</label>
+      <input class="input" id="sa-full-name" placeholder="npr. Amina Hodzic">
+    </div>
+    <div class="field">
+      <label>Email (opciono)</label>
+      <input class="input" id="sa-email" placeholder="amina.hodzic@idss.local">
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Uloga</label>
+        <select class="input" id="sa-role" onchange="toggleSaTeacherFields()">
+          <option value="librarian">Bibliotekar</option>
+          <option value="teacher">Nastavnik</option>
+          <option value="viewer">Pregled (samo citanje)</option>
+          <option value="admin">Administrator</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select class="input" id="sa-active">
+          <option value="true">Aktivan</option>
+          <option value="false">Neaktivan</option>
+        </select>
+      </div>
+    </div>
+    <div id="sa-teacher-fields-wrap" class="hidden">
+      <label>Predmet(i) i razred(i) koje predaje</label>
+      <p class="sub" style="margin-top:0;">Koristi se za automatski predlog nastavnika kod masovnog zaduzenja razreda.</p>
+      <div id="sa-assignment-rows"></div>
+      <button class="btn btn-sm btn-neutral mt-8" onclick="addSaAssignmentRow()"><i class="fa-solid fa-plus"></i> Dodaj predmet/razred</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-neutral" onclick="closeStaffAdminModal()">Otkazi</button>
+      <button class="btn btn-primary" onclick="saveStaffAdmin()"><i class="fa-solid fa-check"></i> Sacuvaj</button>
+    </div>
+  </div>
+</div>
 
 <!-- ============== STAFF BULK IMPORT MODAL (.xlsx / .pdf) ============== -->
 <div id="staff-import-modal" class="modal-backdrop hidden">

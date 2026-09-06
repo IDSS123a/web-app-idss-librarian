@@ -33,7 +33,8 @@ const SEARCHABLE_COLUMNS = {
   library_users: ['student_id', 'first_name', 'last_name', 'class_name', 'email'],
   borrowings: ['book_title', 'inventory_number', 'student_id', 'student_name', 'student_class', 'librarian_borrowed', 'librarian_returned'],
   settings: ['school_name', 'library_name', 'inventory_prefix'],
-  audit_log: ['actor', 'action', 'entity', 'entity_id']
+  audit_log: ['actor', 'action', 'entity', 'entity_id'],
+  teacher_assignments: ['subject', 'grade']
 };
 
 const KNOWN_TABLES = Object.keys(SEARCHABLE_COLUMNS);

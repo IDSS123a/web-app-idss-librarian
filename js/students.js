@@ -61,8 +61,9 @@ function renderStudentsTable() {
       <td>${escH(s.email || '—')}</td>
       <td>${s.active === false ? '<span class="badge badge-lost">Neaktivan</span>' : '<span class="badge badge-available">Aktivan</span>'}</td>
       <td>${activeCount > 0 ? `<span class="badge badge-borrowed">${activeCount}</span>` : '0'}</td>
-      <td onclick="event.stopPropagation();">
+      <td onclick="event.stopPropagation();" class="flex gap-8">
         <button class="btn btn-sm btn-neutral" onclick="openEditStudentModal('${s.id}')"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-sm btn-neutral" onclick="deleteStudent('${s.id}')"><i class="fa-solid fa-trash"></i></button>
       </td>
     </tr>`;
   }).join('');
@@ -129,6 +130,31 @@ async function saveStudent() {
   } catch (e) {
     console.error(e);
     IDSS.toast('Greska pri cuvanju.', 'error');
+  } finally {
+    IDSS.hideLoading();
+  }
+}
+
+async function deleteStudent(id) {
+  const s = ALL_STUDENTS.find(x => x.id === id);
+  if (!s) return;
+  if (!confirm(`Da li ste sigurni da zelite obrisati ucenika "${s.first_name} ${s.last_name}"? Ova radnja se ne moze ponistiti.`)) return;
+
+  IDSS.showLoading('Brisanje...');
+  try {
+    const activeLoans = ALL_BORROWINGS_S.filter(t => t.student_record_id === id && t.status === 'borrowed');
+    if (activeLoans.length > 0) {
+      IDSS.toast(`Ne moze se obrisati: ucenik ima ${activeLoans.length} aktivno zaduzenje. Prvo razdužite knjige ili deaktivirajte ucenika.`, 'error');
+      return;
+    }
+    await IDSS.apiDelete('library_users', id);
+    ALL_STUDENTS = ALL_STUDENTS.filter(x => x.id !== id);
+    await IDSS.logAudit('user_deleted', 'library_user', id, { student_id: s.student_id });
+    renderStudentsTable();
+    IDSS.toast('Ucenik obrisan.', 'success');
+  } catch (e) {
+    console.error(e);
+    IDSS.toast('Greska pri brisanju.', 'error');
   } finally {
     IDSS.hideLoading();
   }

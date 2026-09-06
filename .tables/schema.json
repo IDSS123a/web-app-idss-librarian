@@ -46,6 +46,31 @@
     ]
   },
   {
+    "name": "teacher_assignments",
+    "fields": [
+      {
+        "name": "id",
+        "type": "text",
+        "description": "Unique identifier"
+      },
+      {
+        "name": "teacher_id",
+        "type": "text",
+        "description": "FK -> staff.id (role=teacher). A teacher has one row per subject+grade they teach (many-to-many: real schedules show teachers covering several subjects and grades at once)."
+      },
+      {
+        "name": "subject",
+        "type": "text",
+        "description": "Subject taught, e.g. 'Mathematik'"
+      },
+      {
+        "name": "grade",
+        "type": "text",
+        "description": "Grade taught, e.g. '6'"
+      }
+    ]
+  },
+  {
     "name": "categories",
     "fields": [
       {

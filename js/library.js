@@ -619,29 +619,173 @@ async function openBookDetail(bookId) {
     </div>
     <div class="table-wrap mt-8">
       <table class="data-table">
-        <thead><tr><th>Inv. broj</th><th>Polica</th><th>Stanje</th><th>Cijena</th><th>Status</th><th>Trenutni korisnik</th><th>Akcije</th></tr></thead>
+        <thead><tr><th>Inv. broj</th><th>Predmet/Razred</th><th>Polica</th><th>Stanje</th><th>Cijena</th><th>Status</th><th>Trenutni korisnik</th><th>Akcije</th></tr></thead>
         <tbody>
           ${copies.map(c => `<tr>
             <td class="font-bold">${c.inventory_number}</td>
+            <td>${escapeHtml([c.subject, c.grade].filter(Boolean).join(' / ') || '—')}</td>
             <td>${escapeHtml(c.shelf_location || '—')}</td>
             <td>${escapeHtml(c.condition || '—')}</td>
             <td>${c.purchase_price != null ? Number(c.purchase_price).toFixed(2) + ' EUR' : '—'}</td>
             <td>${renderStatusBadge(c.status, c.due_date)}</td>
             <td>${c.status === 'borrowed' ? escapeHtml(c.borrower_name || '—') : '—'}</td>
-            <td>
+            <td class="flex gap-8" style="flex-wrap:wrap;">
+              <button class="btn btn-sm btn-neutral" onclick="openEditCopyModal('${c.id}')"><i class="fa-solid fa-pen"></i></button>
               ${c.status !== 'lost' ? `<button class="btn btn-sm btn-neutral" onclick="markCopyStatus('${c.id}','lost')">Izgubljeno</button>` : ''}
               ${c.status !== 'damaged' ? `<button class="btn btn-sm btn-neutral" onclick="markCopyStatus('${c.id}','damaged')">Osteceno</button>` : ''}
               ${(c.status === 'lost' || c.status === 'damaged') ? `<button class="btn btn-sm btn-neutral" onclick="markCopyStatus('${c.id}','available')">Vrati u upotrebu</button>` : ''}
+              ${c.status !== 'borrowed' ? `<button class="btn btn-sm btn-neutral" onclick="deleteCopy('${c.id}')"><i class="fa-solid fa-trash"></i></button>` : ''}
             </td>
           </tr>`).join('')}
         </tbody>
       </table>
     </div>
-    <div class="modal-actions"><button class="btn btn-neutral" onclick="closeBookDetail()">Zatvori</button></div>
+    <div class="modal-actions">
+      <button class="btn btn-neutral" onclick="openEditBookModal('${book.id}')"><i class="fa-solid fa-pen"></i> Uredi knjigu</button>
+      <button class="btn btn-neutral" onclick="deleteBook('${book.id}')"><i class="fa-solid fa-trash"></i> Obrisi knjigu</button>
+      <button class="btn btn-primary" onclick="closeBookDetail()">Zatvori</button>
+    </div>
   `;
   document.getElementById('book-detail-modal').classList.remove('hidden');
 }
 function closeBookDetail() { document.getElementById('book-detail-modal').classList.add('hidden'); }
+
+/* ================= EDIT / DELETE BOOK ================= */
+
+function openEditBookModal(bookId) {
+  const book = ALL_BOOKS.find(b => b.id === bookId);
+  if (!book) return;
+  document.getElementById('eb-id').value = book.id;
+  document.getElementById('eb-title').value = book.title || '';
+  document.getElementById('eb-subtitle').value = book.subtitle || '';
+  document.getElementById('eb-author').value = book.author || '';
+  document.getElementById('eb-isbn').value = book.isbn || '';
+  document.getElementById('eb-publisher').value = book.publisher || '';
+  document.getElementById('eb-year').value = book.publication_year || '';
+  document.getElementById('eb-language').value = book.language || '';
+  const catSel = document.getElementById('eb-category');
+  catSel.innerHTML = ALL_CATEGORIES.filter(c => c.active !== false).map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  catSel.value = book.category || '';
+  document.getElementById('edit-book-modal').classList.remove('hidden');
+}
+function closeEditBookModal() { document.getElementById('edit-book-modal').classList.add('hidden'); }
+
+async function saveEditBook() {
+  const id = document.getElementById('eb-id').value;
+  const title = document.getElementById('eb-title').value.trim();
+  if (!title) { IDSS.toast('Naslov je obavezan.', 'error'); return; }
+  const data = {
+    title, subtitle: document.getElementById('eb-subtitle').value.trim(),
+    author: document.getElementById('eb-author').value.trim(), isbn: document.getElementById('eb-isbn').value.trim(),
+    publisher: document.getElementById('eb-publisher').value.trim(),
+    publication_year: parseInt(document.getElementById('eb-year').value) || null,
+    language: document.getElementById('eb-language').value.trim(), category: document.getElementById('eb-category').value
+  };
+  IDSS.showLoading('Cuvanje...');
+  try {
+    const updated = await IDSS.apiUpdate('books', id, data);
+    const idx = ALL_BOOKS.findIndex(b => b.id === id);
+    if (idx >= 0) ALL_BOOKS[idx] = updated;
+    await IDSS.logAudit('book_edited', 'book', id, { title });
+    closeEditBookModal();
+    openBookDetail(id);
+    applyFilters();
+    IDSS.toast('Knjiga azurirana.', 'success');
+  } catch (e) {
+    console.error(e);
+    IDSS.toast('Greska pri cuvanju.', 'error');
+  } finally {
+    IDSS.hideLoading();
+  }
+}
+
+async function deleteBook(bookId) {
+  const book = ALL_BOOKS.find(b => b.id === bookId);
+  if (!book) return;
+  const copies = ALL_COPIES.filter(c => c.book_id === bookId);
+  if (copies.length > 0) { IDSS.toast(`Ne moze se obrisati: knjiga ima ${copies.length} primjerak(a). Prvo obrisite sve primjerke.`, 'error'); return; }
+  if (!confirm(`Da li ste sigurni da zelite obrisati knjigu "${book.title}"? Ova radnja se ne moze ponistiti.`)) return;
+
+  IDSS.showLoading('Brisanje...');
+  try {
+    await IDSS.apiDelete('books', bookId);
+    ALL_BOOKS = ALL_BOOKS.filter(b => b.id !== bookId);
+    await IDSS.logAudit('book_deleted', 'book', bookId, { title: book.title });
+    closeBookDetail();
+    applyFilters();
+    IDSS.toast('Knjiga obrisana.', 'success');
+  } catch (e) {
+    console.error(e);
+    IDSS.toast('Greska pri brisanju.', 'error');
+  } finally {
+    IDSS.hideLoading();
+  }
+}
+
+/* ================= EDIT / DELETE COPY ================= */
+
+function openEditCopyModal(copyId) {
+  const c = ALL_COPIES.find(x => x.id === copyId);
+  if (!c) return;
+  document.getElementById('ec-id').value = c.id;
+  document.getElementById('ec-subject').value = c.subject || '';
+  document.getElementById('ec-grade').value = c.grade || '';
+  document.getElementById('ec-shelf').value = c.shelf_location || '';
+  document.getElementById('ec-price').value = c.purchase_price != null ? c.purchase_price : '';
+  document.getElementById('ec-condition').value = c.condition || 'dobro';
+  document.getElementById('ec-notes').value = c.notes || '';
+  document.getElementById('edit-copy-modal').classList.remove('hidden');
+}
+function closeEditCopyModal() { document.getElementById('edit-copy-modal').classList.add('hidden'); }
+
+async function saveEditCopy() {
+  const id = document.getElementById('ec-id').value;
+  const priceVal = document.getElementById('ec-price').value;
+  const data = {
+    subject: document.getElementById('ec-subject').value.trim(), grade: document.getElementById('ec-grade').value.trim(),
+    shelf_location: document.getElementById('ec-shelf').value.trim(),
+    purchase_price: priceVal === '' ? null : parseFloat(priceVal),
+    condition: document.getElementById('ec-condition').value, notes: document.getElementById('ec-notes').value.trim()
+  };
+  IDSS.showLoading('Cuvanje...');
+  try {
+    const updated = await IDSS.apiUpdate('book_copies', id, data);
+    const idx = ALL_COPIES.findIndex(c => c.id === id);
+    if (idx >= 0) ALL_COPIES[idx] = updated;
+    await IDSS.logAudit('copy_edited', 'book_copy', id, {});
+    closeEditCopyModal();
+    openBookDetail(updated.book_id);
+    applyFilters();
+    IDSS.toast('Primjerak azuriran.', 'success');
+  } catch (e) {
+    console.error(e);
+    IDSS.toast('Greska pri cuvanju.', 'error');
+  } finally {
+    IDSS.hideLoading();
+  }
+}
+
+async function deleteCopy(copyId) {
+  const c = ALL_COPIES.find(x => x.id === copyId);
+  if (!c) return;
+  if (c.status === 'borrowed') { IDSS.toast('Ne moze se obrisati primjerak koji je trenutno zaduzen.', 'error'); return; }
+  if (!confirm(`Da li ste sigurni da zelite obrisati primjerak "${c.inventory_number}"? Ova radnja se ne moze ponistiti.`)) return;
+
+  IDSS.showLoading('Brisanje...');
+  try {
+    await IDSS.apiDelete('book_copies', copyId);
+    ALL_COPIES = ALL_COPIES.filter(x => x.id !== copyId);
+    await IDSS.logAudit('copy_deleted', 'book_copy', copyId, { inventory_number: c.inventory_number });
+    openBookDetail(c.book_id);
+    applyFilters();
+    IDSS.toast('Primjerak obrisan.', 'success');
+  } catch (e) {
+    console.error(e);
+    IDSS.toast('Greska pri brisanju.', 'error');
+  } finally {
+    IDSS.hideLoading();
+  }
+}
 
 async function markCopyStatus(copyId, status) {
   if (!confirm(`Da li ste sigurni da zelite promijeniti status ovog primjerka na "${status}"?`)) return;

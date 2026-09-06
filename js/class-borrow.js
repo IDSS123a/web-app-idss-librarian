@@ -11,6 +11,7 @@
 
 let CB_STATE = {};
 let CB_TEACHERS = null; // lazy-loaded, cached for the session
+let CB_ASSIGNMENTS = null; // lazy-loaded teacher_assignments (teacher_id, subject, grade), cached for the session
 
 function startClassBorrowFlow() {
   CB_STATE = {};
@@ -49,26 +50,66 @@ async function selectBookForClassBorrow(bookId) {
   if (available.length === 0) { IDSS.toast('Nema dostupnih primjeraka ove knjige.', 'error'); return; }
   CB_STATE.book = book;
   CB_STATE.availableCopies = available;
+  // Subject/grade live per-copy (not per-book) since the same title can serve
+  // different classes; use whichever value most of the available copies agree
+  // on as "this batch's" subject/grade, to auto-suggest the right teacher.
+  CB_STATE.bookSubject = mostCommonB(available.map(c => c.subject).filter(Boolean));
+  CB_STATE.bookGrade = mostCommonB(available.map(c => c.grade).filter(Boolean));
   document.getElementById('cb-book-summary').innerHTML = `
     <div class="font-bold">${escapeHtmlB(book.title)}</div>
-    <div class="text-secondary text-sm">${escapeHtmlB(book.author || '')} · ${available.length} dostupno na stanju</div>`;
+    <div class="text-secondary text-sm">${escapeHtmlB(book.author || '')} · ${available.length} dostupno na stanju${CB_STATE.bookSubject ? ' · ' + escapeHtmlB(CB_STATE.bookSubject) : ''}${CB_STATE.bookGrade ? ' · razred ' + escapeHtmlB(CB_STATE.bookGrade) : ''}</div>`;
 
   // Populate class dropdown from distinct class_name among active students
   const classes = Array.from(new Set(ALL_STUDENTS_B.filter(s => s.active !== false && s.class_name).map(s => s.class_name))).sort();
   document.getElementById('cb-class-select').innerHTML = classes.length
     ? classes.map(c => `<option value="${escapeHtmlB(c)}">${escapeHtmlB(c)}</option>`).join('')
     : `<option value="">(nema razreda sa aktivnim ucenicima)</option>`;
+  // Pre-select the class matching the book's grade, if any, since that's the
+  // overwhelmingly common case (grade 6 textbook -> grade 6 class).
+  if (CB_STATE.bookGrade) {
+    const match = classes.find(c => IDSS.normalize(c).startsWith(IDSS.normalize(CB_STATE.bookGrade)));
+    if (match) document.getElementById('cb-class-select').value = match;
+  }
 
   await loadTeachersForClassBorrow();
   showClassBorrowStep(2);
 }
 
+function teacherAssignmentsSummary(teacherId) {
+  const rows = (CB_ASSIGNMENTS || []).filter(a => a.teacher_id === teacherId);
+  if (!rows.length) return '';
+  const bySubj = {};
+  rows.forEach(a => { (bySubj[a.subject] = bySubj[a.subject] || []).push(a.grade); });
+  return ' — ' + Object.entries(bySubj).map(([s, grades]) => `${s} (${grades.join(', ')})`).join('; ');
+}
+
+function mostCommonB(arr) {
+  if (!arr.length) return null;
+  const counts = {};
+  arr.forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+}
+
 async function loadTeachersForClassBorrow() {
   if (!CB_TEACHERS) CB_TEACHERS = (await IDSS.apiListAll('staff')).filter(s => s.role === 'teacher' && s.active !== false);
+  if (!CB_ASSIGNMENTS) CB_ASSIGNMENTS = await IDSS.apiListAll('teacher_assignments');
+
   const sel = document.getElementById('cb-teacher-select');
-  sel.innerHTML = CB_TEACHERS.length
-    ? CB_TEACHERS.map(t => `<option value="${t.id}">${escapeHtmlB(t.full_name)}${t.subject ? ' — ' + escapeHtmlB(t.subject) : ''}${t.grade ? ' (razred ' + escapeHtmlB(t.grade) + ')' : ''}</option>`).join('')
+  const subj = CB_STATE.bookSubject, grade = CB_STATE.bookGrade;
+  let list = CB_TEACHERS, matchedNote = '';
+  if (subj || grade) {
+    const matchedIds = new Set(CB_ASSIGNMENTS.filter(a =>
+      (!subj || IDSS.normalize(a.subject) === IDSS.normalize(subj)) &&
+      (!grade || IDSS.normalize(a.grade) === IDSS.normalize(grade))
+    ).map(a => a.teacher_id));
+    const matched = CB_TEACHERS.filter(t => matchedIds.has(t.id));
+    if (matched.length > 0) { list = matched; matchedNote = ' (predlozeno prema predmetu/razredu)'; }
+    else matchedNote = ' (nema poklapanja po predmetu/razredu — prikazani svi nastavnici)';
+  }
+  sel.innerHTML = list.length
+    ? list.map(t => `<option value="${t.id}">${escapeHtmlB(t.full_name)}${escapeHtmlB(teacherAssignmentsSummary(t.id))}</option>`).join('')
     : `<option value="">(nema unesenih nastavnika — dodajte ih u Podesavanjima)</option>`;
+  document.getElementById('cb-teacher-hint').textContent = list.length ? matchedNote.trim() : '';
 }
 
 function loadClassStudentsForBorrow() {
