@@ -161,8 +161,8 @@ async function doSignUp() {
     const { data, error } = await IDSS.getAuthClient().auth.signUp({ email, password });
     if (error) { showMsg(mapAuthError(error), 'error'); return; }
     if (!data.session) {
-      showMsg(`Provjerite email (${email}) i kliknite na link za potvrdu naloga, zatim se vratite ovdje i prijavite se lozinkom koju ste upravo postavili.`, 'info');
       showSigninForm();
+      showMsg(`Provjerite email (${email}) i kliknite na link za potvrdu naloga, zatim se vratite ovdje i prijavite se lozinkom koju ste upravo postavili.`, 'info');
       return;
     }
     await afterAuthSuccess();
